@@ -99,4 +99,17 @@ pattern="^$HOME/.local/bin/simbeamd serve -addr 127.0.0.1:18080 -no-update-check
 if pgrep -f "$pattern" >/dev/null; then pkill -TERM -f "$pattern"; fi
 echo 'Mirror service stopped. Simulator kept open.'`;
 
-module.exports = { probe, installScript, prepareRuntime, startScript, stop };
+function shutdownScript(udid) {
+  validateUdid(udid);
+  return `set -e
+/usr/bin/python3 - ${quote(udid)} <<'PY'
+import json,subprocess,sys
+devices=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','-j'],text=True))['devices']
+device=next((d for group in devices.values() for d in group if d['udid']==sys.argv[1]),None)
+if not device: raise SystemExit('This simulator is no longer available. Refresh the device list.')
+if device['state']!='Shutdown': subprocess.run(['xcrun','simctl','shutdown',sys.argv[1]],check=True)
+print('Selected simulator shut down. Its data is preserved.')
+PY`;
+}
+
+module.exports = { probe, installScript, prepareRuntime, startScript, stop, shutdownScript };

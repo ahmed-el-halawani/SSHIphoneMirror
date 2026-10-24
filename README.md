@@ -2,6 +2,17 @@
 
 Open **Start-App.cmd**, or the packaged **release/win-unpacked/iPhone Mirror.exe**.
 
+## Device selection and running simulators — version 0.3.1
+
+Connecting to the Mac discovers devices and leaves **Choose device…** selected. It does not open or boot a simulator or attach a real phone. Select a device yourself to open its viewer.
+
+The dropdown groups **Real iPhones**, **Running simulators**, and **Stopped simulators**. The currently attached device is marked **Viewing**; duplicate names include a short identifier. Switching between running simulators keeps the previous simulator running, so you can select it again later.
+
+Use **Device > Shut down selected simulator**, or the matching button in connection settings, to power off only that simulator without erasing its data. Other simulators stay running. **Disconnect viewer** closes the stream; it leaves the simulator running.
+
+The refresh icon beside the device selector reloads the list. The list also updates about every 15 seconds while idle, including changes made on the Mac. Refreshing preserves your selection and never opens a device.
+
+
 ## Real iPhone support — version 0.3
 
 Connect your iPhone to the Mac by USB, trust the Mac, enable Developer Mode / UI automation, and keep it unlocked during setup. Connect the Mac in this app, then choose your phone under **Real iPhones** in the top device selector. Simulators remain in their own group.

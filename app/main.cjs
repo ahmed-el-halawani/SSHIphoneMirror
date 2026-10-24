@@ -175,11 +175,11 @@ app.whenReady().then(async () => {
   }, false);
   handle('control', deviceControl);
   handle('screenshot', screenshot);
-  handle('menu', name => {
+  handle('menu', (name, canShutdown) => {
     const send = action => window.webContents.send('mirror:action', action);
     const menus = {
       Edit: [{ label: 'Connection settings…', click: () => openPanel('connection') }, { label: 'Activity log', click: () => openPanel('activity') }, { type: 'separator' }, { role: 'quit' }],
-      Device: [{ label: 'Attach / reconnect device', click: () => send('reconnect') }, { label: 'Home', enabled: !!viewer, click: () => send('home') }, { label: 'Shake', enabled: !!viewer && !realSession, click: () => send('shake') }, { type: 'separator' }, { label: 'Save screenshot…', enabled: !!viewer, click: () => send('screenshot') }, { label: 'Disconnect viewer', enabled: !!viewer, click: () => send('disconnect') }, { label: 'Stop streaming on Mac', enabled: !!active, click: () => send('stop') }],
+      Device: [{ label: 'Attach / reconnect device', click: () => send('reconnect') }, { label: 'Refresh device list', enabled: !!active, click: () => send('refresh') }, { label: 'Shut down selected simulator', enabled: !!active && canShutdown === true, click: () => send('shutdown') }, { type: 'separator' }, { label: 'Home', enabled: !!viewer, click: () => send('home') }, { label: 'Shake', enabled: !!viewer && !realSession, click: () => send('shake') }, { type: 'separator' }, { label: 'Save screenshot…', enabled: !!viewer, click: () => send('screenshot') }, { label: 'Disconnect viewer', enabled: !!viewer, click: () => send('disconnect') }, { label: 'Stop streaming on Mac', enabled: !!active, click: () => send('stop') }],
       View: [{ label: 'Zoom in', click: () => zoomWindow('in') }, { label: 'Zoom out', click: () => zoomWindow('out') }, { label: 'Fit window', click: () => zoomWindow('fit') }, { type: 'separator' }, { label: 'Always on top', type: 'checkbox', checked: window.isAlwaysOnTop(), click: item => window.setAlwaysOnTop(item.checked) }, { label: 'Minimize', click: () => window.minimize() }]
     };
     if (!Object.hasOwn(menus, name)) throw Error('Unknown menu.');
@@ -248,6 +248,13 @@ app.whenReady().then(async () => {
     const data = await usingRunner(async conn => resultJSON(await conn.run(remote.startScript(udid), 600000)));
     await showViewer(viewerURL(data.url, udid));
     return { connected: true };
+  });
+  handle('devices', () => usingRunner(async conn => resultJSON(await conn.run(remote.probe))));
+  handle('shutdown', async udid => {
+    validateUdid(udid);
+    // Shutting down one simulator never quits Simulator.app or the other devices.
+    await usingRunner(conn => conn.run(remote.shutdownScript(udid)));
+    log('Selected simulator shut down. Other devices remain running.');
   });
   handle('disconnect', async () => { hideViewer(); await closeReal(); log('Viewer disconnected. Your devices remain open.'); });
   handle('stop', async () => { hideViewer(); await closeReal(); await usingRunner(conn => conn.run(remote.stop)); log('Streaming stopped.'); });
