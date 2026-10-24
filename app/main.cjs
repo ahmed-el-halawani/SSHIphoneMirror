@@ -159,7 +159,7 @@ app.whenReady().then(async () => {
   protocol.handle('mirror', serveResource);
   session.fromPartition('persist:simulator').protocol.handle('mirror', serveResource);
   window = new BrowserWindow({ width: 376, height: 850, minWidth: 320, minHeight: 600, title: 'iPhone Mirror',
-    frame: false, backgroundColor: '#191919', autoHideMenuBar: true,
+    frame: false, backgroundColor: '#191919', autoHideMenuBar: true, icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true } });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, target) => { if (target !== 'mirror://app/index.html') event.preventDefault(); });

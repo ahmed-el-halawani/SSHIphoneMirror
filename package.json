@@ -27,7 +27,8 @@
       "package.json"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "app/assets/icon.ico"
     },
     "nsis": {
       "oneClick": false,
