@@ -59,7 +59,8 @@ async function main(){
   if(release&&!release.draft)throw Error('This release is already public; refusing to overwrite it.');
   if(!release)release=await api('/releases',{method:'POST',body:JSON.stringify({tag_name:tag,target_commitish:sha,name:`iPhone Mirror ${version}`,draft:true,generate_release_notes:true})});
   if(release.target_commitish!==sha)throw Error('The draft release belongs to a different commit.');
-  const name=path.basename(file);
+  // GitHub normalizes spaces in uploads; use a stable name for draft retries.
+  const name=`iPhone-Mirror-Setup-${version}.exe`;
   for(const asset of release.assets||[])if(asset.name===name)await api(`/releases/assets/${asset.id}`,{method:'DELETE'});
   const upload=new URL(release.upload_url.replace(/\{.*$/,''));
   if(upload.protocol!=='https:'||upload.hostname!=='uploads.github.com')throw Error('Unexpected release upload destination.');
