@@ -6,7 +6,8 @@ const session='12345678-1234-1234-1234-123456789abc';
 test('real device identifiers and input reject injection and invalid coordinates',()=>{
   assert.equal(validateRealUdid('00008140-0000000000000001'),'00008140-0000000000000001');
   assert.throws(()=>startScript('00008140-0000000000000001;whoami'));
-  assert.match(startScript('00008140-0000000000000001'),/'appium:wdaBindingIP':'127.0.0.1'/);
+  assert.match(startScript('00008140-0000000000000001'),/'appium:wdaBindingIP':binding/);
+  assert.match(startScript('00008140-0000000000000001'),/binding\.lower\(\)\.startswith\('fd'\)/);
   for(const bad of [{type:'tap',x:-1,y:0},{type:'tap',x:NaN,y:1},{type:'swipe',x1:0,y1:0,x2:Infinity,y2:1},{type:'shell',command:'whoami'},{type:'key',key:'x'.repeat(33)}])assert.throws(()=>validateInput(bad));
 });
 

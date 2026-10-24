@@ -7,6 +7,13 @@ const { Client: SSHClient } = require('ssh2');
 const { parse } = require('smol-toml');
 const { fingerprint } = require('./core.cjs');
 
+function cancelled() { const error=Error('Connection cancelled.');error.name='AbortError';return error; }
+function terminate(child) {
+  if(child.exitCode!==null)return;
+  if(process.platform==='win32' && child.pid) spawn('taskkill.exe',['/pid',String(child.pid),'/t','/f'],{windowsHide:true,stdio:'ignore'}).on('error',()=>child.kill());
+  else child.kill();
+}
+
 async function managerClient() {
   const config = path.join(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'), 'config.toml');
   let entry;
@@ -46,7 +53,8 @@ function openSSHRunner(recipe, log) {
   if (recipe.executable !== 'ssh' || !Array.isArray(recipe.argv) || recipe.argv[0] !== 'ssh') throw Error('Unsupported SSH connection recipe.');
   return {
     close() {},
-    async forward(remotePorts) {
+    async forward(remotePorts, signal) {
+      if(signal?.aborted)throw cancelled();
       for (const port of remotePorts) if (![17425,19100].includes(port)) throw Error('Unsupported device port.');
       const ports = [];
       for (const _port of remotePorts) ports.push(await new Promise((resolve,reject) => {
@@ -61,6 +69,7 @@ function openSSHRunner(recipe, log) {
       child.on('error',e=>{failure=e.message;});
       try {
         for(let attempt=0;attempt<80;attempt++) {
+          if(signal?.aborted)throw cancelled();
           if(child.exitCode!==null || failure) throw Error(failure || 'SSH tunnel exited.');
           const connected=await new Promise(resolve=>{const s=net.connect(ports[0],'127.0.0.1');s.once('connect',()=>{s.destroy();resolve(true)});s.once('error',()=>resolve(false));});
           if(connected)return {ports,close:()=>child.kill()};
@@ -69,7 +78,8 @@ function openSSHRunner(recipe, log) {
         throw Error('Timed out opening the device SSH tunnel.');
       } catch(e) {child.kill();throw e;}
     },
-    runSigned(script, timeout=600000) {
+    runSigned(script, timeout=600000, signal) {
+      if(signal?.aborted)return Promise.reject(cancelled());
       const signing=recipe.signing;
       if (!signing || signing.mode==='off') throw Error('Enable a signing mode for this Mac in SSH Resource Manager first.');
       const command=`printf %s '${Buffer.from(script).toString('base64')}' | base64 -D | /bin/sh`;
@@ -84,22 +94,27 @@ function openSSHRunner(recipe, log) {
       return new Promise((resolve,reject)=>{
         const child=spawn(executable,args,{windowsHide:true,windowsVerbatimArguments:!!signing.command_env,env,stdio:['ignore','pipe','pipe']});
         let output='',error='',settled=false;
-        const finish=(e)=>{if(settled)return;settled=true;clearTimeout(timer);e?reject(e):resolve(output);};
+        const abort=()=>{terminate(child);finish(cancelled());};
+        const finish=(e)=>{if(settled)return;settled=true;clearTimeout(timer);signal?.removeEventListener('abort',abort);e?reject(e):resolve(output);};
         const timer=setTimeout(()=>{child.kill();finish(Error('Device setup timed out. Check the activity log on the Mac before retrying.'));},timeout);
+        signal?.addEventListener('abort',abort,{once:true});
         child.stdout.on('data',d=>{output+=d;if(output.length>4e6){child.kill();finish(Error('Device setup output exceeded its limit.'));}});
         child.stderr.on('data',d=>{error=(error+d).slice(-16000);});
         child.on('error',finish);
         child.on('close',code=>finish(code===0?null:Error(error.trim()||output.slice(-3000)||`Signing runner exited (${code}).`)));
       });
     },
-    run(script, timeout = 180000) {
+    run(script, timeout = 180000, signal) {
+      if(signal?.aborted)return Promise.reject(cancelled());
       return new Promise((resolve, reject) => {
         const child = spawn('ssh', [...recipe.argv.slice(1), 'sh -s'], {
           windowsHide: true, shell: false, env: { ...process.env, ...recipe.env }, stdio: ['pipe', 'pipe', 'pipe']
         });
         let out = '', err = '', settled = false;
-        const finish = (error, value) => { if (settled) return; settled = true; clearTimeout(timer); error ? reject(error) : resolve(value); };
+        const abort=()=>{terminate(child);finish(cancelled());};
+        const finish = (error, value) => { if (settled) return; settled = true; clearTimeout(timer);signal?.removeEventListener('abort',abort); error ? reject(error) : resolve(value); };
         const timer = setTimeout(() => { child.kill(); finish(Error('The Mac command timed out. The simulator or download may still be running; check the Mac and retry.')); }, timeout);
+        signal?.addEventListener('abort',abort,{once:true});
         child.stdout.on('data', d => { out += d; if (out.length > 4e6) { child.kill(); finish(Error('Mac response exceeded the size limit.')); } });
         child.stderr.on('data', d => { err = (err + d).slice(-16000); });
         child.on('error', e => finish(e));
@@ -137,13 +152,17 @@ async function connect(profile, password, trust, log) {
   }).catch(e => { conn.end(); throw e; });
   const runner = {
     close() { conn.end(); },
-    run(script, timeout = 180000) {
+    run(script, timeout = 180000, signal) {
+      if(signal?.aborted)return Promise.reject(cancelled());
       return new Promise((resolve, reject) => {
         conn.exec('sh -s', (error, stream) => {
           if (error) return reject(error);
           let out = '', err = '', settled = false;
-          const finish = (error, result) => { if (settled) return; settled = true; clearTimeout(timer); error ? reject(error) : resolve(result); };
+          const abort=()=>{stream.close();finish(cancelled());};
+          const finish = (error, result) => { if (settled) return; settled = true; clearTimeout(timer);signal?.removeEventListener('abort',abort); error ? reject(error) : resolve(result); };
           const timer = setTimeout(() => { stream.close(); finish(Error('Mac command timed out. Check the Mac before retrying.')); }, timeout);
+          signal?.addEventListener('abort',abort,{once:true});
+          if(signal?.aborted){abort();return;}
           stream.on('data', d => { out += d; if (out.length > 4e6) { stream.close(); finish(Error('Mac response exceeded the size limit.')); } });
           stream.stderr.on('data', d => { err = (err + d).slice(-16000); });
           stream.on('error', e => finish(e));
@@ -158,10 +177,11 @@ async function connect(profile, password, trust, log) {
     }
   };
   runner.runSigned=runner.run;
-  runner.forward=async remotePorts=>{
+  runner.forward=async(remotePorts,signal)=>{
     const servers=[];const ports=[];const sockets=new Set();
     try {
       for(const port of remotePorts) {
+        if(signal?.aborted)throw cancelled();
         if(![17425,19100].includes(port))throw Error('Unsupported device port.');
         const server=net.createServer(socket=>{
           sockets.add(socket);socket.on('close',()=>sockets.delete(socket));

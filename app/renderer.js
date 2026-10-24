@@ -1,6 +1,7 @@
 const $ = id => document.getElementById(id);
 let mode = 'mcp', hosts = [], saved = [], running = false, ready = false;
 let devices = [], panelVisible = false, live = false, viewing = '', revision = 0, refreshTask = null;
+let opening = false, deviceTask = null, cancelTask = null, choiceRevision = 0;
 function updateStageAccess() {
   const covered = panelVisible || live;
   document.querySelector('main').inert = covered;
@@ -24,6 +25,7 @@ function log(message, error = false) {
   $('status').textContent = message.split('\n')[0].slice(0, 120);
   $('status').title = message;
   if (message.startsWith('Live video connected')) { live = true; updateStageAccess(); updateDeviceState(); setBusy(running); }
+  if (message.startsWith('Video disconnected')) { live = false; updateDeviceState(); setBusy(running); }
   if (error) showPanel(true, 'activity');
 }
 window.mirror.onProgress(log);
@@ -35,9 +37,12 @@ function setBusy(value) {
   running = value;
   const selected = selectedDevice();
   for (const id of ['connect','attach','import','managerTab','manualTab','hosts','saved','host','username','port','password','chooseKey','clearKey','remember']) $(id).disabled = value;
-  $('simulators').disabled = value || !ready || !devices.length;
+  $('simulators').disabled = (value && !opening) || !ready || !devices.length;
   $('refresh').disabled = value || !ready;
-  $('open').disabled = value || !ready || !selected;
+  $('open').disabled = opening ? !!cancelTask : value || !ready || !selected;
+  $('open').title = opening ? 'Cancel connection attempt' : 'Reconnect device';
+  $('open').setAttribute('aria-label', $('open').title);
+  $('openIcon').setAttribute('href', opening ? '#i-close' : '#i-reload');
   for (const id of ['disconnect','stop']) $(id).disabled = value || !viewing;
   for (const id of ['home','screenshot']) $(id).disabled = value || !viewing || !live;
   $('shake').disabled = value || !viewing || !live || selected?.kind === 'real';
@@ -48,7 +53,7 @@ function setBusy(value) {
 async function action(fn) {
   if (running) return;
   setBusy(true);
-  try { if (refreshTask) await refreshTask; await fn(); } catch (e) { log(e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''), true); }
+  try { if (refreshTask) await refreshTask; await fn(); } catch (e) { const message=e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''); log(message, !message.includes('Connection cancelled')); }
   finally { setBusy(false); }
 }
 function setMode(next) {
@@ -111,7 +116,7 @@ function renderDevices(next, preserve = $('simulators').value) {
     const group = document.createElement('optgroup'); group.label = label;
     for (const d of devices.filter(matches)) {
       const duplicate = devices.filter(other => other.name === d.name && other.kind === d.kind).length > 1;
-      const state = d.kind === 'real' ? 'Connected' : d.state === 'Booted' ? 'Running' : d.state === 'Booting' ? 'Starting' : 'Stopped';
+      const state = d.kind === 'real' ? d.state + (d.transport ? ' · ' + d.transport : '') : d.state === 'Booted' ? 'Running' : d.state === 'Booting' ? 'Starting' : 'Stopped';
       option(group, deviceValue(d), `${d.name} — ${state}${viewing === deviceValue(d) ? ' · Viewing' : ''}${duplicate ? ' [' + (d.kind === 'real' ? d.udid.slice(-4) : d.udid.slice(0, 4)) + ']' : ''}`);
     }
     if (group.children.length) $('simulators').append(group);
@@ -121,7 +126,7 @@ function renderDevices(next, preserve = $('simulators').value) {
 }
 function updateDeviceState() {
   const d = selectedDevice();
-  const state = d?.kind === 'real' ? 'Real iPhone' : canShutdown(d) ? 'Running simulator' : 'Stopped simulator';
+  const state = d?.kind === 'real' ? 'Real iPhone' + (d.transport ? ' · ' + d.transport : '') : canShutdown(d) ? 'Running simulator' : 'Stopped simulator';
   $('deviceState').textContent = d ? 'iOS ' + d.runtime.split('.iOS-').pop().replaceAll('-', '.') + ' · ' + state + (live && viewing === deviceValue(d) ? ' · Viewing' : '') : ready ? 'Mac connected · Choose a device' : 'Not connected';
   $('attach').textContent = !ready ? 'Connect to Mac' : d ? 'Open selected device' : 'Choose device';
   $('emptyTitle').textContent = ready ? 'Choose your device.' : 'Your iPhone, right here.';
@@ -142,21 +147,45 @@ async function refreshDevices(background = false) {
 async function reconnect() {
   const d = selectedDevice();
   if (!d) { $('simulators').focus(); return; }
-  const target = deviceValue(d);
-  updateDeviceState(); await showPanel(false);
-  try { await window.mirror.start(target); viewing = target; }
-  catch (error) {
-    await window.mirror.disconnect().catch(() => {});
-    viewing = ''; live = false; updateStageAccess(); updateDeviceState();
-    throw error;
-  }
-  await refreshDevices();
+  opening = true; setBusy(true);
+  try {
+    const target = deviceValue(d);
+    updateDeviceState(); await showPanel(false);
+    try { await window.mirror.start(target); viewing = target; }
+    catch (error) {
+      await window.mirror.disconnect().catch(() => {});
+      viewing = ''; live = false; updateStageAccess(); updateDeviceState();
+      throw error;
+    }
+    await refreshDevices();
+  } finally { opening = false; }
 }
-$('open').onclick = () => action(reconnect);
-$('simulators').onchange = () => { if (selectedDevice()) return action(reconnect); updateDeviceState(); setBusy(running); };
+function openSelected() {
+  if (running) return deviceTask;
+  deviceTask = action(reconnect); return deviceTask;
+}
+function cancelOpening() {
+  if (cancelTask) return cancelTask;
+  if (!opening) return Promise.resolve();
+  const previous = deviceTask;
+  cancelTask = (async () => {
+    await window.mirror.cancelStart(); await previous;
+    if (viewing) { await window.mirror.disconnect(); viewing = ''; live = false; updateStageAccess(); }
+    updateDeviceState(); log('Connection cancelled. Choose another device.');
+  })().finally(() => { cancelTask = null; setBusy(false); });
+  return cancelTask;
+}
+$('open').onclick = () => opening ? cancelOpening().catch(error => log(error.message, true)) : openSelected();
+$('simulators').onchange = async () => {
+  const choice = ++choiceRevision;
+  if (opening) await cancelOpening();
+  if (choice !== choiceRevision) return;
+  if (selectedDevice()) return openSelected();
+  updateDeviceState(); setBusy(running);
+};
 $('refresh').onclick = () => action(() => refreshDevices());
 $('attach').onclick = () => {
-  if (ready && selectedDevice()) return action(reconnect);
+  if (ready && selectedDevice()) return openSelected();
   if (ready) { $('simulators').focus(); try { $('simulators').showPicker(); } catch {} return; }
   if (mode === 'mcp' && hosts.length) return $('connect').click();
   return showPanel(true);
@@ -182,7 +211,7 @@ $('closeWindow').onclick = () => window.mirror.windowAction('close');
 document.querySelectorAll('[data-menu]').forEach(button => { button.onclick = () => window.mirror.menu(button.dataset.menu, canShutdown(selectedDevice())); });
 document.querySelectorAll('[data-zoom]').forEach(button => { button.onclick = () => window.mirror.zoom(button.dataset.zoom); });
 window.mirror.onAction(command => {
-  if (command === 'reconnect') ready ? action(reconnect) : $('attach').click();
+  if (command === 'reconnect') ready ? openSelected() : $('attach').click();
   else if (['home','shake','screenshot','disconnect','stop','refresh','shutdown'].includes(command)) $(command).click();
 });
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && panelVisible) showPanel(false); });

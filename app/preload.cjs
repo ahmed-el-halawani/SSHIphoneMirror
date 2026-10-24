@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('mirror', {
   chooseKey: () => ipcRenderer.invoke('mirror:key'),
   setup: profile => ipcRenderer.invoke('mirror:setup', profile),
   start: udid => ipcRenderer.invoke('mirror:start', udid),
+  cancelStart: () => ipcRenderer.invoke('mirror:cancel-start'),
   devices: () => ipcRenderer.invoke('mirror:devices'),
   shutdown: udid => ipcRenderer.invoke('mirror:shutdown', udid),
   disconnect: () => ipcRenderer.invoke('mirror:disconnect'),

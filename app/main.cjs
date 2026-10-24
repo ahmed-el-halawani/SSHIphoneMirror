@@ -11,11 +11,12 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'mirror', privileges: { standard
 let window, viewer, active, busy = false, storeWritable = true;
 let panelOpen = false;
 let realSession = null;
+let pendingStart=null;
 async function closeReal() {
   const current=realSession;realSession=null;
   if(!current)return;
   try { await fetch(`${current.base}/session/${current.sessionId}`,{method:'DELETE',signal:AbortSignal.timeout(5000)}); }
-  catch {} finally {current.tunnel.close();current.conn.close();}
+  catch {} finally {await current.conn.run(real.cancel,10000).catch(()=>{});current.tunnel.close();current.conn.close();}
 }
 let store = { profiles: [] };
 const storePath = () => path.join(app.getPath('userData'), 'connections.json');
@@ -93,7 +94,7 @@ function zoomWindow(direction) {
   window.setSize(Math.max(320, Math.min(area.width, Math.round(direction === 'fit' ? 376 * scale : width * scale))),
     Math.max(600, Math.min(area.height, Math.round(direction === 'fit' ? 850 * scale : height * scale))));
 }
-async function showViewer(url, physical=false) {
+async function showViewer(url, physical=false, signal) {
   hideViewer();
   viewer = new WebContentsView({ webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, partition: 'persist:simulator',...(physical?{preload:path.join(__dirname,'real-preload.cjs')}:{}) } });
   viewer.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -110,8 +111,20 @@ async function showViewer(url, physical=false) {
   });
   window.contentView.addChildView(viewer);
   layoutViewer();
-  try { await viewer.webContents.loadURL(url); }
-  catch { hideViewer(); throw Error('The device viewer could not load. Try Reconnect again.'); }
+  try {
+    await new Promise((resolve,reject)=>{
+      const page=viewer.webContents;
+      let settled=false;
+      const abort=()=>finish(Error('Connection cancelled.'));
+      const ready=()=>finish();
+      const finish=error=>{if(settled)return;settled=true;clearTimeout(timer);signal?.removeEventListener('abort',abort);page.removeListener('dom-ready',ready);error?reject(error):resolve();};
+      const timer=setTimeout(()=>finish(Error('Viewer did not load in time.')),15000);
+      page.once('dom-ready',ready);signal?.addEventListener('abort',abort,{once:true});
+      if(signal?.aborted){abort();return;}
+      page.loadURL(url).catch(finish);
+    });
+  }
+  catch { hideViewer(); throw Error(signal?.aborted ? 'Connection cancelled.' : 'The device viewer could not load. Try Reconnect again.'); }
   viewer.webContents.focus();
 }
 
@@ -226,29 +239,43 @@ app.whenReady().then(async () => {
     return info;
   });
   handle('start', async udid => {
+    const controller=new AbortController();
+    const pending={controller,physical:typeof udid==='string'&&udid.startsWith('real:')};
+    pending.done=new Promise(resolve=>{pending.resolve=resolve;});pendingStart=pending;
+    try {
     if(typeof udid==='string' && udid.startsWith('real:')) {
       const device=real.validateRealUdid(udid.slice(5));
       hideViewer();await closeReal();
       const conn=await runner();let tunnel;
       try {
         log('Installing real-iPhone tools if needed…');
-        await conn.run(real.install,600000);
+        await conn.run(real.install,600000,controller.signal);
         log('Signing, installing and starting WebDriverAgent. Keep the iPhone unlocked; first setup can take several minutes…');
-        const info=resultJSON(await conn.runSigned(real.startScript(device),720000));
-        tunnel=await conn.forward([17425,19100]);
+        const info=resultJSON(await conn.runSigned(real.startScript(device),720000,controller.signal));
+        tunnel=await conn.forward([17425,19100],controller.signal);
+        if(controller.signal.aborted)throw Error('Connection cancelled.');
         realSession={...info,conn,tunnel,base:`http://127.0.0.1:${tunnel.ports[0]}`,stream:`http://127.0.0.1:${tunnel.ports[1]}`};
         await real.request(realSession.base,info.sessionId,'/window/rect');
-        await showViewer('mirror://viewer/real.html',true);
+        await showViewer('mirror://viewer/real.html',true,controller.signal);
         return {connected:true,kind:'real'};
-      } catch(e) {tunnel?.close();conn.close();realSession=null;throw e;}
+      } catch(e) {tunnel?.close();await conn.run(real.cancel,15000).catch(()=>{});conn.close();realSession=null;throw e;}
     }
     validateUdid(udid);
     await closeReal();
     log('Booting the simulator and starting its stream. First boot can take a few minutes…');
-    const data = await usingRunner(async conn => resultJSON(await conn.run(remote.startScript(udid), 600000)));
-    await showViewer(viewerURL(data.url, udid));
+    const data = await usingRunner(async conn => resultJSON(await conn.run(remote.startScript(udid), 600000,controller.signal)));
+    await showViewer(viewerURL(data.url, udid),false,controller.signal);
     return { connected: true };
+    } finally {if(pendingStart===pending)pendingStart=null;pending.resolve();}
   });
+  handle('cancel-start', async()=>{
+    const pending=pendingStart;
+    if(!pending)return;
+    pending.controller.abort();await pending.done;
+    hideViewer();await closeReal();
+    if(pending.physical)await usingRunner(conn=>conn.run(real.cancel,15000));
+    log('Connection cancelled. You can choose another device.');
+  },false);
   handle('devices', () => usingRunner(async conn => resultJSON(await conn.run(remote.probe))));
   handle('shutdown', async udid => {
     validateUdid(udid);
@@ -262,4 +289,12 @@ app.whenReady().then(async () => {
   window.show();
 });
 app.on('window-all-closed', () => app.quit());
-app.on('before-quit',event=>{if(realSession){event.preventDefault();closeReal().finally(()=>app.quit());}});
+app.on('before-quit',event=>{
+  if(!realSession&&!pendingStart)return;
+  event.preventDefault();
+  const pending=pendingStart;pending?.controller.abort();
+  (async()=>{
+    if(pending){await pending.done;if(pending.physical)await usingRunner(conn=>conn.run(real.cancel,15000)).catch(()=>{});}
+    await closeReal();
+  })().finally(()=>app.quit());
+});

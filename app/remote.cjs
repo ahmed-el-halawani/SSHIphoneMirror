@@ -21,7 +21,7 @@ try:
   for d in physical:
     h=d.get('hardwareProperties',{});p=d.get('deviceProperties',{});c=d.get('connectionProperties',{})
     if h.get('deviceType')=='iPhone' and c.get('pairingState')=='paired':
-      phones.append(dict(udid=h['udid'],name=p.get('name','iPhone'),state='Connected',runtime=p.get('osVersionNumber',''),kind='real'))
+      phones.append(dict(udid=h['udid'],name=p.get('name','iPhone'),state='Connected' if c.get('tunnelState')=='connected' else 'Paired',runtime=p.get('osVersionNumber',''),kind='real',transport='USB' if c.get('transportType')=='wired' else 'Wi-Fi'))
 except (OSError,ValueError,subprocess.SubprocessError): pass
 print('MIRROR_JSON='+json.dumps(dict(os=run('sw_vers','-productVersion'),arch=platform.machine(),xcode=run('xcodebuild','-version').splitlines()[0],runtimes=len(runtimes),devices=phones)))
 PY`;

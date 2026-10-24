@@ -94,3 +94,14 @@ test('a user selection made during refresh is preserved and opens only that devi
 test('simulator shutdown rejects injected identifiers',()=>{
   assert.throws(()=>shutdownScript(a+'; shutdown all'));
 });
+
+test('a pending connection keeps the selector usable and switching cancels the old attempt',async()=>{
+  const h=await harness();await h.entries.get('connect').onclick();let rejectFirst;
+  h.mirror.start=async id=>{h.calls.start.push(id);if(id===a)await new Promise((_resolve,reject)=>{rejectFirst=reject;});};
+  h.mirror.cancelStart=async()=>rejectFirst(Error('Connection cancelled.'));
+  h.entries.get('simulators').value=a;const first=h.entries.get('simulators').onchange();await tick();
+  assert.equal(h.entries.get('simulators').disabled,false);
+  assert.equal(h.entries.get('open').title,'Cancel connection attempt');
+  h.entries.get('simulators').value=b;await h.entries.get('simulators').onchange();await first;
+  assert.deepEqual(h.calls.start,[a,b]);assert.equal(h.entries.get('simulators').value,b);
+});

@@ -4,7 +4,7 @@ Open **Start-App.cmd**, or the packaged **release/win-unpacked/iPhone Mirror.exe
 
 ## Device selection and running simulators — version 0.3.1
 
-Connecting to the Mac discovers devices and leaves **Choose device…** selected. It does not open or boot a simulator or attach a real phone. Select a device yourself to open its viewer.
+Connecting to the Mac discovers devices and leaves **Choose device…** selected. It does not open or boot a simulator or attach a real phone. Select a device yourself to open its viewer. During a pending connection, the selector remains usable: selecting another device cancels the old attempt first. The reconnect icon changes to Cancel during startup.
 
 The dropdown groups **Real iPhones**, **Running simulators**, and **Stopped simulators**. The currently attached device is marked **Viewing**; duplicate names include a short identifier. Switching between running simulators keeps the previous simulator running, so you can select it again later.
 
@@ -15,17 +15,17 @@ The refresh icon beside the device selector reloads the list. The list also upda
 
 ## Real iPhone support — version 0.3
 
-Connect your iPhone to the Mac by USB, trust the Mac, enable Developer Mode / UI automation, and keep it unlocked during setup. Connect the Mac in this app, then choose your phone under **Real iPhones** in the top device selector. Simulators remain in their own group.
+Pair and trust your iPhone with the Mac, enable Developer Mode / UI automation, and keep it unlocked during setup. USB and paired Wi-Fi connections are supported. Connect the Mac in this app, then choose your phone under **Real iPhones** in the top device selector. Simulators remain in their own group.
 
-The app installs its own Appium 3.8.0 and XCUITest driver 12.20.0 under `~/.local/share/iphone-mirror-tools/`. It finds the existing Apple Development identity/team, asks Xcode to manage provisioning, signs and installs WebDriverAgent, starts it, and opens SSH tunnels for screen streaming and controls. SSH Resource Manager's configured signing runner unlocks the keychain inside the signing session; credentials and private keys are not copied into the application. With manual SSH, the Mac's signing keychain must already be accessible to that SSH session; use the manager's signing mode for unattended unlock.
+The app installs its own Appium 3.8.0, XCUITest driver 12.20.0 and optional network-device support under `~/.local/share/iphone-mirror-tools/`. It finds the existing Apple Development identity/team, asks Xcode to manage provisioning, signs and installs WebDriverAgent, starts it, and opens SSH tunnels for screen streaming and controls. SSH Resource Manager's configured signing runner unlocks the keychain inside the signing session; credentials and private keys are not copied into the application. With manual SSH, the Mac's signing keychain must already be accessible to that SSH session; use the manager's signing mode for unattended unlock.
 
 Full Xcode, a valid development account/identity, provisioning access, and Node.js 24+ on the Mac are prerequisites. macOS/iOS approvals and Apple account sign-in must be handled on their devices. Multiple different signing teams require a deliberate team choice; this MVP automatically selects only a unique team.
 
-Real-device video uses an MJPEG screenshot stream, and commands use Appium/XCUITest over SSH. Appium on the Mac and WebDriverAgent on the phone bind to loopback; USB forwarding carries the phone connection. It does not use the public SimBeam broker. Tap, swipe, typing, Home, screenshots, reconnect, and switching back to simulators are supported. Shake is disabled for real phones. Input is serialized and mapped to the phone's current screen dimensions, including orientation. This testing connection can respond more slowly than simulator streaming.
+Real-device video uses an MJPEG screenshot stream, and commands use Appium/XCUITest over SSH. USB uses loopback device forwarding. Wi-Fi uses the Mac-private IPv6 CoreDevice tunnel, with a loopback video relay and a tunnel keepalive. Appium stays bound to Mac loopback; the phone helper binds only to loopback or its private CoreDevice address. It does not use the public SimBeam broker. Tap, swipe, typing, Home, screenshots, reconnect, and switching back to simulators are supported. Shake is disabled for real phones. Input is serialized and mapped to the phone's current screen dimensions, including orientation. This testing connection can respond more slowly than simulator streaming.
 
-Closing or disconnecting the real-phone viewer ends its Appium session and closes the SSH tunnel. The installed helper and the local Appium service remain on the Mac for later use. Logs are in `~/.local/share/iphone-mirror-tools/appium.log` with user-only permissions. Do not run multiple real-device sessions from this app on the same Mac; the first version owns one dedicated Appium instance there.
+Closing or disconnecting the real-phone viewer ends its Appium session, stops the owned Appium/Wi-Fi relay processes, and closes the SSH tunnel. The installed helper and tools remain on the Mac for later use. Logs are in `~/.local/share/iphone-mirror-tools/appium.log` with user-only permissions. Do not run multiple real-device sessions from this app on the same Mac; the first version owns one dedicated Appium instance there.
 
-Verified on the connected iPhone 16 Pro Max running iOS 27.0: automatic signing/install/start, 440×956 point coordinates, screen stream through SSH, opening Settings by mouse, typing into its search field, swiping results, and returning Home. The simulator path also reconnected successfully. Fourteen automated tests cover input validation, point conversion, SSH authentication/forwarding, and simulator behavior.
+Verified on the connected iPhone 16 Pro Max running iOS 27.0 (USB, followed by a same-Wi-Fi CoreDevice tunnel test): automatic signing/install/start, 440×956 point coordinates, screen stream through SSH, opening Settings by mouse, typing into its search field, swiping results, and returning Home. The simulator path also reconnected successfully. Fourteen automated tests cover input validation, point conversion, SSH authentication/forwarding, and simulator behavior.
 
 Version 0.2 uses a narrow, dark simulator window inspired by the supplied viewer screenshots. Use **Attach simulator** to connect the imported Mac. The connection icon in the bottom toolbar opens SSH/MCP settings inside the same window; the activity icon opens the setup log. The top selector switches simulators, and the bottom toolbar provides Home, reconnect, PNG screenshot capture, Shake, connection settings, and activity. Edit / Device / View menus include disconnect, stop streaming, zoom, and always-on-top. Drag the top menu bar to move the window; resize its edges as needed.
 
@@ -110,3 +110,5 @@ Connection metadata is stored in Electron's user data directory (`%APPDATA%/iPho
 متطلب Xcode المعلن للأداة أحدث من إصدار جهازك؛ نجاح اختبار الالتقاط هنا يثبت عمل هذا الجزء على الإعداد الحالي فقط.
 
 المشروع الأصلي: https://github.com/kei-sidorov/simbeam
+
+Wi-Fi follow-up: the physical iPhone was verified with `transportType: localNetwork`, an active CoreDevice tunnel, a successful screen-size response, a screenshot, and an MJPEG stream through SSH. During startup, choose another device to cancel the pending attempt, or use the temporary Cancel icon in the reconnect button.

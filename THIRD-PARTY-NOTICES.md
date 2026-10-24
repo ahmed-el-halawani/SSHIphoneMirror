@@ -12,3 +12,5 @@ The separate `simbeam-web` frontend is not copied or distributed. The default pu
 ## Real-device tools
 
 Real-device support installs Appium and its XCUITest driver on the user's Mac from the npm registry. WebDriverAgent is supplied by the driver and built/signed locally using Xcode. These tools retain their upstream licenses in their installed packages; their source and binaries are not bundled into this Windows app. Projects: https://github.com/appium/appium and https://github.com/appium/appium-xcuitest-driver . Real-device streaming uses SSH rather than the SimBeam signaling service.
+
+The real-device installer applies a narrowly checked IPv6 URL-normalization fix to the pinned Appium/WDA build files on the Mac. Modified files retain upstream notices and receive an iPhone Mirror modification marker. The fix permits Mac-private CoreDevice tunnel endpoints without exposing a plain LAN relay.
