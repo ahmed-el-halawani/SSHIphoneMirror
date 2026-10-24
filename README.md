@@ -2,6 +2,14 @@
 
 Open **Start-App.cmd**, or the packaged **release/win-unpacked/iPhone Mirror.exe**.
 
+## Automatic GitHub releases
+
+Every push to `main` runs `.github/workflows/windows-release.yml` on a Windows runner. It selects the next stable patch version, updates package/lock versions only in the build workspace, installs locked dependencies, runs the tests, installs the checksum-verified Electron runtime, and builds the NSIS Windows installer. A GitHub Release is published only after its installer EXE has uploaded successfully.
+
+With source version 0.3.1 and no existing tags, the first release is **v0.3.2**, followed by **v0.3.3**, **v0.3.4**, and so on. Existing tags and draft releases reserve their versions. A retry resumes its draft, while rerunning an already published commit skips another release. Release jobs are queued to prevent version collisions. The workflow can also be started manually on `main` from Actions.
+
+No personal access token is required: the publishing steps use the repository's built-in `GITHUB_TOKEN` with `contents: write`. CI does not push version-bump commits, so it cannot create a release loop. The EXE is unsigned unless Windows signing is configured separately.
+
 ## Device selection and running simulators — version 0.3.1
 
 Connecting to the Mac discovers devices and leaves **Choose device…** selected. It does not open or boot a simulator or attach a real phone. Select a device yourself to open its viewer. During a pending connection, the selector remains usable: selecting another device cancels the old attempt first. The reconnect icon changes to Cancel during startup.
