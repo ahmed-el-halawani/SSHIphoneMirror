@@ -1,0 +1,11 @@
+node_modules/
+release/
+.research/
+*.log
+# Local verification captures and connection secrets.
+/*.png
+connections.json
+.env
+.env.local
+*.pem
+*.key

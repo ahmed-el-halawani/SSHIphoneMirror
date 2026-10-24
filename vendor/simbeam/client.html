@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>iPhone Mirror viewer</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src wss://signal.simbeam.dev https://signal.simbeam.dev; media-src blob:; img-src 'self' data:; object-src 'none'; frame-src 'none'">
+<!-- Modified from the Apache-licensed SimBeam v0.23.0 reference client. -->
+  <style>
+    *{box-sizing:border-box}html,body{height:100%;margin:0;background:#191919;color:#ddd;font-family:"Segoe UI",sans-serif;overflow:hidden}
+    body{display:flex;align-items:center;justify-content:center;padding:18px 26px}
+    #identity,#startPanel,#macs,#subPanel,#turnIndicator,h3,#sims,#hint,#home,#shake{display:none!important}
+    #viewerStatus{position:absolute;left:15px;right:15px;top:4px;font-size:10px;text-align:center;color:#999;z-index:2;background:#191919}
+    body:has(video[style*="block"]) #viewerStatus{display:none}
+    #deviceFrame{height:min(100%,calc((100vw - 56px)*2.164));aspect-ratio:390/844;max-width:100%;border-radius:46px;background:#050505;position:relative;box-shadow:0 0 0 3px #060606,0 0 0 5px #8a8a8a,0 0 0 7px #080808}
+    #deviceFrame:before,#deviceFrame:after{content:"";position:absolute;background:#4b4b4b;width:3px;border-radius:2px;pointer-events:none}
+    #deviceFrame:before{left:-10px;top:23%;height:45px;box-shadow:0 57px #4b4b4b}#deviceFrame:after{right:-10px;top:31%;height:65px}
+    #screenVid{display:none;width:100%;height:100%;object-fit:fill;border:0;border-radius:43px;touch-action:none;background:#050505;cursor:default}
+  </style>
+</head>
+<body><div id="viewerStatus" role="status">Connecting…</div>
+  <div id="identity" style="margin:8px 0; padding:8px; border:1px solid #eee; font-size:13px;">
+    <b>Account key:</b> <code id="pubkey">…</code>
+    <button id="resetIdentity" title="new account for testing">reset</button>
+  </div>
+  <div id="startPanel" style="margin:8px 0; padding:8px; border:1px solid #88f; border-radius:4px; font-size:13px;">
+    <b>App secret</b> (= server <code>SIMCAST_APP_SECRET</code>):
+    <input id="appSecretInput" size="44" placeholder="paste the server's SIMCAST_APP_SECRET" style="font-family:monospace;">
+    <button id="startBtn">Start</button>
+    <span id="startStatus"></span>
+  </div>
+  <div id="macs" style="margin:8px 0;">
+    <b>My Macs:</b>
+    <div id="macList">none yet</div>
+    <button id="pairBtn" style="display:none;">Pair this Mac</button>
+  </div>
+  <div id="subPanel" style="margin:8px 0; padding:8px; border:1px solid #eee; font-size:13px;">
+    <b>Subscription (StoreKit emulation):</b>
+    <input id="subProduct" value="pro.monthly" size="12">
+    expires <input id="subExpires" type="date">
+    <button id="subApply">Apply</button>
+    <span id="subStatus"></span>
+  </div>
+  <div id="turnIndicator" style="margin:8px 0; font-size:13px;"></div>
+  <h3>Simulators</h3>
+  <div id="sims">loading…</div>
+  <div id="deviceFrame"><video id="screenVid" class="surface" autoplay playsinline muted></video></div>
+  <div id="hint">Click&nbsp;= tap · drag&nbsp;= swipe · keys typed here go to the device</div>
+  <div><button id="home">Home</button><button id="shake">Shake</button></div>
+
+<script src="client.js"></script>
+</body>
+</html>

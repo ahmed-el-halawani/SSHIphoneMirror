@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'">
+<title>iPhone Mirror</title><link rel="stylesheet" href="style.css"></head>
+<body>
+  <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H15v-6H9v6H3z"/></symbol>
+    <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 7v6h-6M20 13a8 8 0 1 1-2-7"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 7h5l2-3h4l2 3h5v13H3z"/><circle cx="12" cy="13" r="4"/></symbol>
+    <symbol id="i-shake" viewBox="0 0 24 24"><rect x="8" y="4" width="8" height="16" rx="2"/><path d="m3 7-2 3 2 4-2 3m20-10 2 3-2 4 2 3"/></symbol>
+    <symbol id="i-connect" viewBox="0 0 24 24"><path d="m9 15 6-6m-7 3-2 2a4 4 0 0 0 6 6l2-2m-2-12 2-2a4 4 0 0 1 6 6l-2 2"/></symbol>
+    <symbol id="i-log" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M14 3h7v7M21 3l-7 7M10 21H3v-7m0 7 7-7"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m5 5 14 14M19 5 5 19"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14m-7-7v14"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><rect x="8" y="6" width="8" height="12" rx="2"/></symbol>
+  </defs></svg>
+  <header class="titlebar"><nav aria-label="Application menus"><button data-menu="Edit">Edit <span>⌄</span></button><button data-menu="Device">Device <span>⌄</span></button><button data-menu="View">View <span>⌄</span></button></nav><div class="window-actions"><button id="maximize" title="Maximize / restore" aria-label="Maximize or restore"><svg><use href="#i-expand"/></svg></button><button id="closeWindow" title="Close" aria-label="Close window"><svg><use href="#i-close"/></svg></button></div></header>
+  <div class="devicebar"><div class="device-picker"><select id="simulators" aria-label="Choose simulator" disabled><option value="">Choose simulator</option></select><span id="deviceState">Not attached</span></div><div class="zoom"><button data-zoom="out" title="Zoom out" aria-label="Zoom out"><svg><use href="#i-minus"/></svg></button><button data-zoom="fit" title="Fit window" aria-label="Fit window"><svg><use href="#i-fit"/></svg></button><button data-zoom="in" title="Zoom in" aria-label="Zoom in"><svg><use href="#i-plus"/></svg></button></div></div>
+  <main class="stage"><div class="empty-phone"><div class="empty-content"><h1 id="emptyTitle">Your simulator,<br>right here.</h1><p id="emptyMessage">Connect your Mac to see and control its iPhone simulator.</p><div class="badge" id="emptyBadge"><span>●</span> SSH connection ready</div><p class="note">Shut-down simulators boot automatically.</p><div class="attach-bottom"><p>Xcode and iOS Simulator run on your Mac.</p><button id="attach" class="attach">Attach simulator <span>⌄</span></button></div></div></div></main>
+  <aside id="connectionPanel" class="connection-panel" hidden><div class="panel-heading"><h2 id="panelTitle">Mac connection</h2><button id="closePanel" aria-label="Close connection panel"><svg><use href="#i-close"/></svg></button></div><div class="panel-content">    <section>
+      <div class="tabs" role="tablist" aria-label="Connection source"><button id="managerTab" role="tab" aria-selected="true">SSH Resource Manager</button><button id="manualTab" role="tab" aria-selected="false">Manual SSH</button></div>
+      <div id="managerPanel"><label for="hosts">Mac connection</label><select id="hosts"><option value="">Import your saved Macs</option></select><button id="import" class="secondary full">Import from MCP</button><p class="fine">Uses the SSH Resource Manager configured in Codex. Passwords stay in the manager.</p></div>
+      <form id="manualPanel" hidden>
+        <label for="saved">Saved connections</label><select id="saved"><option value="">New connection</option></select>
+        <label for="host">Mac hostname or IP</label><input id="host" placeholder="192.168.1.20" required autocomplete="off">
+        <div class="fields"><div><label for="username">SSH username</label><input id="username" placeholder="yourname" required autocomplete="username"></div><div><label for="port">Port</label><input id="port" value="22" type="number" min="1" max="65535"></div></div>
+        <label for="password">Password / key passphrase</label><input id="password" type="password" autocomplete="off" placeholder="Stored only if you choose below">
+        <label for="keyPath">Private key (optional)</label><div class="key"><input id="keyPath" readonly placeholder="Use a password, or choose a key"><button id="chooseKey" type="button" class="secondary" aria-label="Choose private key">…</button><button id="clearKey" type="button" class="secondary" aria-label="Clear private key">×</button></div>
+        <label class="check"><input id="remember" type="checkbox"> Remember password with Windows encryption</label>
+      </form>
+      <button id="connect" class="primary full">Connect & set up</button>
+      <p class="fine">Checks Xcode, installs missing streaming helpers, and prepares the simulator.</p>
+    </section>
+    <section class="device"><div class="row"><button id="disconnect" disabled>Disconnect viewer</button><button id="stop" disabled>Stop on Mac</button></div></section>
+    <section class="activity"><h2>Activity</h2><div id="log" role="log" aria-live="polite"><p>Ready when you are.</p></div></section>
+    <p class="credits">Powered by SimBeam · iOS Simulator only</p>
+</div></aside>
+  <footer class="bottom-bar"><div class="tools" role="toolbar" aria-label="Simulator controls"><button id="home" title="Home" aria-label="Home" disabled><svg><use href="#i-home"/></svg></button><button id="open" title="Reconnect simulator" aria-label="Reconnect simulator" disabled><svg><use href="#i-reload"/></svg></button><button id="screenshot" title="Save screenshot" aria-label="Save screenshot" disabled><svg><use href="#i-camera"/></svg></button><button id="shake" title="Shake device" aria-label="Shake device" disabled><svg><use href="#i-shake"/></svg></button><button id="settings" title="Mac connection" aria-label="Mac connection"><svg><use href="#i-connect"/></svg></button><button id="activity" title="Activity log" aria-label="Activity log"><svg><use href="#i-log"/></svg></button></div><div id="status" class="status" role="status">Ready to attach</div></footer>
+  <script src="renderer.js"></script>
+</body></html>

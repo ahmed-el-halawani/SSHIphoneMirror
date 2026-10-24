@@ -1,0 +1,531 @@
+// Modified for iPhone Mirror from SimBeam v0.23.0; see THIRD-PARTY-NOTICES.md.
+
+const simsEl = document.getElementById('sims');
+const vidEl = document.getElementById('screenVid');
+const homeBtn = document.getElementById('home');
+const hintEl = document.getElementById('hint');
+
+let currentUDID = null;
+let pc = null, dc = null, sig = null;   // rtc path
+let startGen = 0;
+
+// ---- 3C: account identity (WebCrypto Ed25519, persisted in localStorage) ----
+
+let clientPriv = null;               // CryptoKey (Ed25519 private, usage ['sign'])
+let clientPub = null;                // base64 (std) raw public key = account id
+
+function bytesToB64(b) { let s = ''; for (const x of b) s += String.fromCharCode(x); return btoa(s); }
+
+async function loadOrCreateIdentity() {
+  const stored = localStorage.getItem('simbeam_priv_pkcs8');
+  const storedPub = localStorage.getItem('simbeam_pub');
+  if (stored && storedPub) {
+    clientPriv = await crypto.subtle.importKey('pkcs8', b64ToBytes(stored), {name: 'Ed25519'}, true, ['sign']);
+    clientPub = storedPub;
+    return;
+  }
+  const kp = await crypto.subtle.generateKey({name: 'Ed25519'}, true, ['sign', 'verify']);
+  const pkcs8 = new Uint8Array(await crypto.subtle.exportKey('pkcs8', kp.privateKey));
+  const raw = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey));
+  clientPriv = kp.privateKey;
+  clientPub = bytesToB64(raw);
+  localStorage.setItem('simbeam_priv_pkcs8', bytesToB64(pkcs8));
+  localStorage.setItem('simbeam_pub', clientPub);
+}
+
+async function signEd25519(bytes) {
+  const sig = await crypto.subtle.sign('Ed25519', clientPriv, bytes);
+  return bytesToB64(new Uint8Array(sig));
+}
+
+async function hmacSha256B64(secret, bytes) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), {name: 'HMAC', hash: 'SHA-256'}, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, bytes);
+  return bytesToB64(new Uint8Array(sig));
+}
+
+// EnrollProof = base64(HMAC-SHA256(S, clientPubKey ‖ 0x00 ‖ nonce)). Bytes must
+// match the Go server byte-for-byte.
+async function enrollProof(secret, pub, nonce) {
+  const enc = new TextEncoder();
+  const a = enc.encode(pub), b = enc.encode(nonce);
+  const buf = new Uint8Array(a.length + 1 + b.length);
+  buf.set(a, 0); buf[a.length] = 0; buf.set(b, a.length + 1);
+  return hmacSha256B64(secret, buf);
+}
+
+function renderIdentity() {
+  document.getElementById('pubkey').textContent = clientPub ? clientPub.slice(0, 16) + '…' : '…';
+}
+
+document.getElementById('resetIdentity').onclick = async () => {
+  localStorage.removeItem('simbeam_priv_pkcs8');
+  localStorage.removeItem('simbeam_pub');
+  await loadOrCreateIdentity();
+  renderIdentity();
+  alert('New account key generated. You must re-pair your Macs.');
+};
+
+// ---- 3C: my Macs (saved pinned daemons) ----
+function loadMacs() {
+  try { return JSON.parse(localStorage.getItem('simbeam_macs') || '[]'); } catch (e) { return []; }
+}
+function saveMac(mac) {
+  const macs = loadMacs().filter(m => m.daemon !== mac.daemon);
+  macs.push(mac);
+  localStorage.setItem('simbeam_macs', JSON.stringify(macs));
+  renderMacs();
+  // The desktop app handles host selection.
+}
+function renderMacs() {
+  const macs = loadMacs();
+  const el = document.getElementById('macList');
+  el.innerHTML = '';
+  if (!macs.length) { el.textContent = 'none yet'; return; }
+  macs.forEach(m => {
+    const b = document.createElement('button');
+    b.textContent = `${presenceDot(m.daemon)} ${m.name || 'Mac'} (${m.daemon.slice(0, 8)}…)`;
+    b.onclick = () => connectRemote(m); // defined in Task 17
+    el.appendChild(b);
+  });
+}
+
+// ---- live presence (online/offline dots) ----
+// A presence WS is separate from the streaming `sig` WS: the broker dispatches on
+// the first message type (watch vs join), so both can target the same broker.
+let presenceState = {};   // daemonID → bool; absent key = unknown
+let presenceConns = [];   // [{ws, signal, ids, timer, closed, backoff}]
+
+function presenceDot(daemon) {
+  if (presenceState[daemon] === true) return '🟢';
+  if (presenceState[daemon] === false) return '⚪';
+  return '?'; // snapshot not yet received / link down
+}
+
+// subscribePresence tears down any existing presence WSs and opens one per
+// distinct broker (grouping saved Macs by their `signal` URL — in practice one).
+function subscribePresence() {
+  presenceConns.forEach(pc => {
+    pc.closed = true;
+    clearTimeout(pc.timer);
+    if (pc.ws) pc.ws.close();
+  });
+  presenceConns = [];
+
+  const byBroker = {};
+  loadMacs().forEach(m => { (byBroker[m.signal] = byBroker[m.signal] || []).push(m.daemon); });
+
+  Object.keys(byBroker).forEach(signal => {
+    const pc = {ws: null, signal, ids: byBroker[signal], timer: null, closed: false, backoff: 1000};
+    presenceConns.push(pc);
+    openPresence(pc);
+  });
+}
+
+function openPresence(pc) {
+  const ws = new WebSocket(pc.signal);
+  pc.ws = ws;
+  ws.onopen = () => {
+    pc.backoff = 1000;
+    ws.send(JSON.stringify({type: 'watch', daemons: pc.ids}));
+  };
+  ws.onmessage = (ev) => {
+    const m = JSON.parse(ev.data);
+    if (m.type === 'presence' && m.states) {
+      Object.assign(presenceState, m.states); // merge snapshot or one-key delta
+      renderMacs();
+    }
+  };
+  ws.onclose = () => {
+    if (pc.closed) return; // intentional teardown by subscribePresence
+    pc.ids.forEach(id => { delete presenceState[id]; }); // dots → '?' until reconnect
+    renderMacs();
+    pc.timer = setTimeout(() => openPresence(pc), pc.backoff);
+    pc.backoff = Math.min(pc.backoff * 2, 30000);
+  };
+  ws.onerror = () => { /* onclose follows; reconnect handled there */ };
+}
+
+// setupPairButton shows the "Pair this Mac" button iff the URL fragment carries
+// a pair secret. Clicking it runs the first-pairing enrollment handshake.
+function setupPairButton() {
+  const p = pairing();
+  const btn = document.getElementById('pairBtn');
+  if (!p) { btn.style.display = 'none'; return; }
+  btn.style.display = 'inline-block';
+  btn.textContent = `Pair this Mac (${p.daemon.slice(0, 8)}…)`;
+  btn.onclick = () => enroll(p);
+}
+
+// enroll runs the first-pairing handshake (carries the HMAC(S) proof). On
+// success the Mac is saved to "my Macs" and the live session continues.
+function enroll(p) {
+  startRemoteSession({signal: p.signal, daemon: p.daemon, daemonPub: p.daemon, pair: p.pair, save: true});
+}
+
+// connectRemote reconnects to a saved Mac (no secret, key-only challenge).
+function connectRemote(mac) {
+  startRemoteSession({signal: mac.signal, daemon: mac.daemon, daemonPub: mac.daemonPub, pair: null, save: false, name: mac.name});
+}
+
+function surface() { return vidEl; }
+
+function teardown() {
+  startGen++; // invalidate any in-flight startRemoteSession awaiting ICE
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  if (sig) { try { sig.close(); } catch (e) {} sig = null; }
+  if (dc) { try { dc.close(); } catch (e) {} dc = null; }
+  if (pc) { try { pc.close(); } catch (e) {} pc = null; }
+  vidEl.style.display = 'none';
+  vidEl.srcObject = null;
+}
+
+function showSurface() {
+  surface().style.display = 'block';
+  homeBtn.style.display = 'inline-block';
+  hintEl.style.display = 'block';
+}
+
+function viewerStatus(message) { document.getElementById('viewerStatus').textContent = message; }
+window.alert = message => viewerStatus(String(message));
+
+function renderSims(sims) {
+  const wanted = new URLSearchParams(location.search).get('udid');
+  const selected = sims.find(s => s.udid === wanted);
+  if (!selected) { viewerStatus('Selected simulator unavailable. Reconnect your Mac.'); return; }
+  viewerStatus('Opening ' + selected.name + '…');
+  pickRTC(selected);
+}
+
+function onPick(s) {
+  pickRTC(s);
+}
+
+// ---- RTC path: control plane + video on demand ----
+// Signaling pairs through the broker carried in the URL fragment
+// (#signal&token&pubkey). The peer + control DataChannel carry video + input.
+
+// pairing() returns enrollment coordinates iff the URL fragment carries a pair
+// secret: {signal, daemon, pair}. Reconnects use saved Macs instead.
+function pairing() {
+  const f = new URLSearchParams(location.hash.slice(1));
+  const signal = f.get('signal'), daemon = f.get('daemon'), pair = f.get('pair');
+  return (signal && daemon && pair) ? {signal, daemon, pair} : null;
+}
+
+let reconnectTimer = null;
+let currentSession = null; // {signal, daemon, daemonPub, pair, save, name}
+
+// startRemoteSession builds the peer + control DataChannel and runs the 3C
+// handshake. On unexpected drop it auto-reconnects (reconnect path, no secret).
+async function startRemoteSession(s) {
+  teardown();
+  currentSession = s;
+  const gen = ++startGen;
+
+  pc = new RTCPeerConnection();
+  pc.addTransceiver('video', {direction: 'recvonly'});
+  dc = pc.createDataChannel('control', {ordered: true});
+  pc.ontrack = (ev) => { vidEl.srcObject = ev.streams[0]; minimizeBuffer(pc); showSurface(); };
+  vidEl.onplaying = () => { viewerStatus('Live · click, swipe, or type'); console.info('MIRROR_STREAM_READY'); };
+  // The desktop already lists and boots devices over SSH; newer daemons list on bulk.
+  dc.onopen = () => pickRTC({udid: new URLSearchParams(location.search).get('udid'), state: 'Booted'});
+  dc.onmessage = (ev) => onCtrlReply(JSON.parse(ev.data));
+
+  const onState = () => {
+    if (!pc) return;
+    if (pc.connectionState === 'failed') {
+      // P2P could not be established (free tier has no relay) — retrying won't
+      // add one, so surface the upsell instead of looping silently.
+      showUpsell();
+      teardown();
+    } else if (pc.connectionState === 'disconnected') {
+      viewerStatus('Reconnecting to your Mac…');
+      console.info('MIRROR_STREAM_DISCONNECTED');
+      scheduleReconnect(); // transient drop — try to recover (Mac may return)
+    }
+  };
+  pc.onconnectionstatechange = onState;
+
+  await signal3C(s, gen);
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer || !currentSession || currentSession.pair) return; // don't auto-retry an enrollment
+  const s = currentSession;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    startRemoteSession({...s, pair: null, save: false}); // reconnect path
+  }, 1000);
+}
+
+// signal3C: join → challenge(sign nonces) → proof → iceServers(offer) →
+// verify signed answer. daemonPub authenticates the Mac (anti-MITM).
+async function signal3C(s, gen) {
+  sig = new WebSocket(s.signal);
+  let offerSent = false;
+  // Trickle: candidates that overtake the signed answer wait here until the
+  // remote description exists (addIceCandidate throws before that). Capped —
+  // the broker is untrusted and can send candidates and never an answer.
+  let trickle = false, remoteSet = false, pendingCands = [];
+  const MAX_PENDING_CANDS = 64;
+  const addCand = async (m) => {
+    try {
+      if (m.candidate) await pc.addIceCandidate({candidate: m.candidate, sdpMid: m.sdpMid, sdpMLineIndex: m.sdpMLineIndex});
+      else await pc.addIceCandidate(); // empty = end-of-candidates
+    } catch (e) { console.warn('addIceCandidate', e); }
+  };
+
+  const sendJoin = async () => {
+    const join = {type: 'join', role: 'client', daemon: s.daemon, pubkey: clientPub, trickle: true};
+    if (s.takeover) join.takeover = true; // user confirmed evicting the sitting client
+    if (s.pair) {
+      const nonce = bytesToB64(crypto.getRandomValues(new Uint8Array(16)));
+      join.nonce = nonce;
+      join.pair = await enrollProof(s.pair, clientPub, nonce);
+    }
+    sig.send(JSON.stringify(join));
+  };
+
+  sig.onerror = () => viewerStatus('Cannot reach the signaling service. Check your network and use Open simulator to retry.');
+  sig.onopen = sendJoin;
+  sig.onmessage = async (ev) => {
+    const m = JSON.parse(ev.data);
+    if (gen !== startGen) return; // superseded
+    switch (m.type) {
+      case 'challenge': {
+        const enc = new TextEncoder();
+        const proof = {
+          type: 'proof',
+          sig: await signEd25519(enc.encode(m.nonce)),
+          brokerSig: await signEd25519(enc.encode(m.brokerNonce)),
+        };
+        sig.send(JSON.stringify(proof));
+        break;
+      }
+      case 'iceServers': {
+        window._iceServers = m.iceServers || [];
+        viewerStatus('Establishing encrypted video…');
+        pc.setConfiguration({iceServers: window._iceServers});
+        trickle = !!m.trickle;
+        if (!offerSent) {
+          const offer = await pc.createOffer();
+          // teardown() during the await nulls pc; without this the assignment
+          // below throws inside onmessage and the session hangs silently
+          // instead of reconnecting.
+          if (gen !== startGen || !pc) return;
+          if (trickle) {
+            // Send the offer the moment it exists; candidates follow as they
+            // are gathered instead of holding the offer until TURN answers.
+            pc.onicecandidate = (ev) => {
+              if (gen !== startGen || !sig || sig.readyState !== WebSocket.OPEN) return;
+              const c = ev.candidate; // null = end of gathering
+              sig.send(JSON.stringify(c
+                ? {type: 'candidate', candidate: c.candidate, sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex}
+                : {type: 'candidate'}));
+            };
+            await pc.setLocalDescription(offer);
+          } else {
+            await pc.setLocalDescription(offer);
+            await iceGatheringComplete(pc);
+          }
+          if (gen !== startGen) return;
+          sig.send(JSON.stringify({type: 'offer', sdp: pc.localDescription.sdp}));
+          offerSent = true;
+        }
+        break;
+      }
+      case 'candidate':
+        // Ignore unless this session negotiated trickle: without it the daemon
+        // never sends candidates, so anything arriving is the broker's.
+        if (!trickle) break;
+        if (remoteSet) await addCand(m);
+        else if (pendingCands.length < MAX_PENDING_CANDS) pendingCands.push(m);
+        break;
+      case 'answer': {
+        const ok = await verifyAnswer(s.daemonPub, m.sdp, m.sig);
+        if (!ok) { showAuthFail(); teardown(); return; }
+        await pc.setRemoteDescription({type: 'answer', sdp: m.sdp});
+        remoteSet = true;
+        for (const c of pendingCands.splice(0)) await addCand(c);
+        minimizeBuffer(pc);
+        if (s.save) {
+          saveMac({signal: s.signal, daemon: s.daemon, daemonPub: s.daemonPub, name: s.name || 'Mac'});
+          // Enrolled now: drop the one-time secret so an unexpected drop
+          // auto-reconnects via the key-only path instead of being suppressed
+          // by scheduleReconnect's "don't auto-retry an enrollment" guard.
+          if (currentSession) currentSession.pair = null;
+        }
+        break;
+      }
+      case 'error':
+        // busy: another device holds the Mac's single session. Stop (teardown
+        // kills the reconnect) unless the user asks to evict it — auto-retrying
+        // would recreate the displacement fight this code exists to prevent.
+        // The busy refusal never reached the daemon, so s.pair is still unspent.
+        if (m.code === 'busy') {
+          const s = currentSession;
+          teardown();
+          if (confirm(m.msg + '\n\nEnd that session and connect here?')) startRemoteSession({...s, takeover: true});
+        }
+        else if (m.code === 'taken_over') { alert(m.msg); teardown(); }
+        else if (String(m.msg).includes('offline')) { scheduleReconnect(); }
+        else { alert('pairing error: ' + m.msg); teardown(); }
+        break;
+      case 'peerLeft':
+        scheduleReconnect();
+        break;
+    }
+  };
+  sig.onclose = () => { if (gen === startGen) scheduleReconnect(); };
+}
+
+// verifyAnswer checks the daemon's Ed25519 signature over the answer SDP using
+// WebCrypto. Returns false on any decode/verify failure.
+async function verifyAnswer(pubB64, sdp, sigB64) {
+  try {
+    const pub = b64ToBytes(pubB64), sigBytes = b64ToBytes(sigB64);
+    const key = await crypto.subtle.importKey('raw', pub, {name: 'Ed25519'}, false, ['verify']);
+    return await crypto.subtle.verify('Ed25519', key, sigBytes, new TextEncoder().encode(sdp));
+  } catch (e) {
+    console.error('answer verification error', e);
+    return false;
+  }
+}
+
+function b64ToBytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function showUpsell() {
+  alert('Could not connect peer-to-peer.\n\n' +
+        'Use the same network as your Mac, or a VPN that allows a direct WebRTC connection.');
+}
+
+function showAuthFail() {
+  alert('Pairing authentication failed: the signaling answer was not signed by ' +
+        'the expected device key. Possible man-in-the-middle — do not proceed. Re-pair.');
+}
+
+function onCtrlReply(m) {
+  switch (m.type) {
+    case 'sims':
+      renderSims(m.sims || []);
+      break;
+    case 'booted':
+      // simulator is up; attach — unless the user re-picked a different one
+      if (m.udid !== currentUDID) break;
+      dc.send(JSON.stringify({type: 'attach', udid: m.udid}));
+      break;
+    case 'attached':
+      showSurface(); // currentUDID was set in pickRTC
+      break;
+    case 'detached':
+      vidEl.style.display = 'none';
+      break;
+    case 'error':
+      alert('rtc error: ' + m.msg);
+      break;
+  }
+}
+
+function pickRTC(s) {
+  if (!dc || dc.readyState !== 'open') { alert('control channel not ready'); return; }
+  currentUDID = s.udid;
+  vidEl.style.display = 'none'; // hide until new feed arrives
+  if (s.state !== 'Booted') {
+    dc.send(JSON.stringify({type: 'boot', udid: s.udid})); // → booted → attach
+  } else {
+    dc.send(JSON.stringify({type: 'attach', udid: s.udid}));
+  }
+}
+
+// Minimize the receiver playout buffer for low latency (Chrome; try/catch for Safari).
+function minimizeBuffer(pc) {
+  pc.getReceivers().forEach(r => {
+    try { r.jitterBufferTarget = 0; } catch (e) {}
+    try { r.playoutDelayHint = 0; } catch (e) {}
+  });
+}
+
+function iceGatheringComplete(pc) {
+  if (pc.iceGatheringState === 'complete') return Promise.resolve();
+  return new Promise(resolve => {
+    const check = () => {
+      if (pc.iceGatheringState === 'complete') {
+        pc.removeEventListener('icegatheringstatechange', check);
+        resolve();
+      }
+    };
+    pc.addEventListener('icegatheringstatechange', check);
+  });
+}
+
+// ---- Shared input ----
+function sendControl(obj) {
+  if (dc && dc.readyState === 'open') dc.send(JSON.stringify(obj));
+}
+
+function controlReady() {
+  return dc && dc.readyState === 'open' && currentUDID;
+}
+
+function normCoords(e) {
+  const rect = surface().getBoundingClientRect();
+  const x = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  const y = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+  return {x, y};
+}
+
+const SWIPE_THRESHOLD_PX = 6;
+let drag = null;
+
+for (const el of [vidEl]) {
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    const c = normCoords(e);
+    drag = {x: c.x, y: c.y, clientX: e.clientX, clientY: e.clientY, t: Date.now()};
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointerup', (e) => {
+    if (e.button !== 0 || !drag) return;
+    if (!controlReady()) { drag = null; return; }
+    const dx = e.clientX - drag.clientX;
+    const dy = e.clientY - drag.clientY;
+    if (Math.sqrt(dx * dx + dy * dy) < SWIPE_THRESHOLD_PX) {
+      sendControl({type: 'tap', x: drag.x, y: drag.y});
+    } else {
+      const end = normCoords(e);
+      const duration = Math.max(0.05, (Date.now() - drag.t) / 1000);
+      sendControl({type: 'swipe', x1: drag.x, y1: drag.y, x2: end.x, y2: end.y, duration});
+    }
+    drag = null;
+  });
+  el.addEventListener('pointercancel', () => { drag = null; });
+}
+
+const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta']);
+window.addEventListener('keydown', (e) => {
+  if (!controlReady()) return;
+  if (MODIFIER_KEYS.has(e.key)) return;
+  if (e.ctrlKey || e.metaKey) return;
+  e.preventDefault();
+  sendControl({type: 'key', key: e.key});
+});
+
+homeBtn.onclick = () => sendControl({type: 'home'});
+
+(async function init() {
+  await loadOrCreateIdentity();
+  renderIdentity();
+  renderMacs();
+  // No background presence connection needed in the desktop viewer.
+  const p = pairing();
+  if (p) { viewerStatus('Connecting to your Mac…'); enroll(p); }
+  else viewerStatus('Reconnect using the Open simulator button.');
+})();
+
+document.getElementById('shake').onclick = () => sendControl({type:'shake'});
