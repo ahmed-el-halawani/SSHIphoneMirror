@@ -2,6 +2,20 @@
 
 Open **Start-App.cmd**, or the packaged **release/win-unpacked/iPhone Mirror.exe**.
 
+## Real iPhone support — version 0.3
+
+Connect your iPhone to the Mac by USB, trust the Mac, enable Developer Mode / UI automation, and keep it unlocked during setup. Connect the Mac in this app, then choose your phone under **Real iPhones** in the top device selector. Simulators remain in their own group.
+
+The app installs its own Appium 3.8.0 and XCUITest driver 12.20.0 under `~/.local/share/iphone-mirror-tools/`. It finds the existing Apple Development identity/team, asks Xcode to manage provisioning, signs and installs WebDriverAgent, starts it, and opens SSH tunnels for screen streaming and controls. SSH Resource Manager's configured signing runner unlocks the keychain inside the signing session; credentials and private keys are not copied into the application. With manual SSH, the Mac's signing keychain must already be accessible to that SSH session; use the manager's signing mode for unattended unlock.
+
+Full Xcode, a valid development account/identity, provisioning access, and Node.js 24+ on the Mac are prerequisites. macOS/iOS approvals and Apple account sign-in must be handled on their devices. Multiple different signing teams require a deliberate team choice; this MVP automatically selects only a unique team.
+
+Real-device video uses an MJPEG screenshot stream, and commands use Appium/XCUITest over SSH. Appium on the Mac and WebDriverAgent on the phone bind to loopback; USB forwarding carries the phone connection. It does not use the public SimBeam broker. Tap, swipe, typing, Home, screenshots, reconnect, and switching back to simulators are supported. Shake is disabled for real phones. Input is serialized and mapped to the phone's current screen dimensions, including orientation. This testing connection can respond more slowly than simulator streaming.
+
+Closing or disconnecting the real-phone viewer ends its Appium session and closes the SSH tunnel. The installed helper and the local Appium service remain on the Mac for later use. Logs are in `~/.local/share/iphone-mirror-tools/appium.log` with user-only permissions. Do not run multiple real-device sessions from this app on the same Mac; the first version owns one dedicated Appium instance there.
+
+Verified on the connected iPhone 16 Pro Max running iOS 27.0: automatic signing/install/start, 440×956 point coordinates, screen stream through SSH, opening Settings by mouse, typing into its search field, swiping results, and returning Home. The simulator path also reconnected successfully. Fourteen automated tests cover input validation, point conversion, SSH authentication/forwarding, and simulator behavior.
+
 Version 0.2 uses a narrow, dark simulator window inspired by the supplied viewer screenshots. Use **Attach simulator** to connect the imported Mac. The connection icon in the bottom toolbar opens SSH/MCP settings inside the same window; the activity icon opens the setup log. The top selector switches simulators, and the bottom toolbar provides Home, reconnect, PNG screenshot capture, Shake, connection settings, and activity. Edit / Device / View menus include disconnect, stop streaming, zoom, and always-on-top. Drag the top menu bar to move the window; resize its edges as needed.
 
 The compact UI was checked with live simulator video, opening/closing its connection panel, and fitting the manual SSH form at the default 376×850 window size. The camera action saved a verified 584×1266 PNG (the current stream resolution). Ten automated tests pass, including compact viewer bounds. The 0.2.0 EXE and installer were rebuilt; bundled files were checked against the source.
@@ -18,7 +32,7 @@ Full Xcode must already be installed and opened once on the Mac, with its licens
 
 The viewer is bundled from the Apache-licensed SimBeam v0.23.0 reference client. It runs in its own sandboxed Electron session with no Node integration or desktop preload. It retains Ed25519 pairing and signed WebRTC answer verification. The local app shell has a narrow IPC API; remote content has no access to SSH credentials. See **THIRD-PARTY-NOTICES.md** and **vendor/simbeam/LICENSE**.
 
-The public `signal.simbeam.dev` broker still coordinates connections. This is not fully offline or a video stream inside SSH. Same-network P2P is the target for this MVP; cross-network access may require a suitable VPN or relay. The polished `simbeam-web` frontend is not included.
+The public `signal.simbeam.dev` broker still coordinates simulator connections. This is not fully offline or a video stream inside SSH. Same-network P2P is the target for this MVP; cross-network access may require a suitable VPN or relay. The polished `simbeam-web` frontend is not included.
 
 ## Development
 

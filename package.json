@@ -1,7 +1,7 @@
 {
   "name": "iphone-mirror",
   "productName": "iPhone Mirror",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Connect your Mac's iOS Simulator to a Windows desktop",
   "author": "Ahmed Elhalawany",
   "private": true,

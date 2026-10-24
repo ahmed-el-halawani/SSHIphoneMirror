@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { spawn } = require('node:child_process');
+const net = require('node:net');
 const { Client: SSHClient } = require('ssh2');
 const { parse } = require('smol-toml');
 const { fingerprint } = require('./core.cjs');
@@ -45,6 +46,52 @@ function openSSHRunner(recipe, log) {
   if (recipe.executable !== 'ssh' || !Array.isArray(recipe.argv) || recipe.argv[0] !== 'ssh') throw Error('Unsupported SSH connection recipe.');
   return {
     close() {},
+    async forward(remotePorts) {
+      for (const port of remotePorts) if (![17425,19100].includes(port)) throw Error('Unsupported device port.');
+      const ports = [];
+      for (const _port of remotePorts) ports.push(await new Promise((resolve,reject) => {
+        const probe = net.createServer(); probe.on('error',reject);
+        probe.listen(0,'127.0.0.1',()=>{const port=probe.address().port;probe.close(()=>resolve(port));});
+      }));
+      const forwards=remotePorts.flatMap((remote,i)=>['-L',`127.0.0.1:${ports[i]}:127.0.0.1:${remote}`]);
+      const child=spawn('ssh',['-N','-o','ExitOnForwardFailure=yes',...forwards,...recipe.argv.slice(1)],{
+        windowsHide:true,shell:false,env:{...process.env,...recipe.env},stdio:['ignore','ignore','pipe']
+      });
+      let failure='';child.stderr.on('data',d=>{failure=(failure+d).slice(-2000);});
+      child.on('error',e=>{failure=e.message;});
+      try {
+        for(let attempt=0;attempt<80;attempt++) {
+          if(child.exitCode!==null || failure) throw Error(failure || 'SSH tunnel exited.');
+          const connected=await new Promise(resolve=>{const s=net.connect(ports[0],'127.0.0.1');s.once('connect',()=>{s.destroy();resolve(true)});s.once('error',()=>resolve(false));});
+          if(connected)return {ports,close:()=>child.kill()};
+          await new Promise(resolve=>setTimeout(resolve,250));
+        }
+        throw Error('Timed out opening the device SSH tunnel.');
+      } catch(e) {child.kill();throw e;}
+    },
+    runSigned(script, timeout=600000) {
+      const signing=recipe.signing;
+      if (!signing || signing.mode==='off') throw Error('Enable a signing mode for this Mac in SSH Resource Manager first.');
+      const command=`printf %s '${Buffer.from(script).toString('base64')}' | base64 -D | /bin/sh`;
+      let executable, args, env={...process.env,...signing.env};
+      if(signing.command_env) {
+        const [launcher,...rest]=signing.argv;
+        if(!launcher.endsWith('sshrm-run.cmd') || /["\r\n%&|<>^]/.test(launcher) || rest.some(a=>!/^--host=[a-f0-9-]{36}$/i.test(a))) throw Error('Unsupported signing launcher.');
+        env[signing.command_env]=command;
+        executable=process.env.ComSpec || 'cmd.exe';
+        args=['/d','/s','/c',`""${launcher}" ${rest.join(' ')}"`];
+      } else { [executable,...args]=signing.argv; args.push(command); }
+      return new Promise((resolve,reject)=>{
+        const child=spawn(executable,args,{windowsHide:true,windowsVerbatimArguments:!!signing.command_env,env,stdio:['ignore','pipe','pipe']});
+        let output='',error='',settled=false;
+        const finish=(e)=>{if(settled)return;settled=true;clearTimeout(timer);e?reject(e):resolve(output);};
+        const timer=setTimeout(()=>{child.kill();finish(Error('Device setup timed out. Check the activity log on the Mac before retrying.'));},timeout);
+        child.stdout.on('data',d=>{output+=d;if(output.length>4e6){child.kill();finish(Error('Device setup output exceeded its limit.'));}});
+        child.stderr.on('data',d=>{error=(error+d).slice(-16000);});
+        child.on('error',finish);
+        child.on('close',code=>finish(code===0?null:Error(error.trim()||output.slice(-3000)||`Signing runner exited (${code}).`)));
+      });
+    },
     run(script, timeout = 180000) {
       return new Promise((resolve, reject) => {
         const child = spawn('ssh', [...recipe.argv.slice(1), 'sh -s'], {
@@ -88,7 +135,7 @@ async function connect(profile, password, trust, log) {
       hostVerifier: (key, cb) => { Promise.resolve(trust(fingerprint(key))).then(cb, () => cb(false)); }
     });
   }).catch(e => { conn.end(); throw e; });
-  return {
+  const runner = {
     close() { conn.end(); },
     run(script, timeout = 180000) {
       return new Promise((resolve, reject) => {
@@ -110,6 +157,27 @@ async function connect(profile, password, trust, log) {
       });
     }
   };
+  runner.runSigned=runner.run;
+  runner.forward=async remotePorts=>{
+    const servers=[];const ports=[];const sockets=new Set();
+    try {
+      for(const port of remotePorts) {
+        if(![17425,19100].includes(port))throw Error('Unsupported device port.');
+        const server=net.createServer(socket=>{
+          sockets.add(socket);socket.on('close',()=>sockets.delete(socket));
+          conn.forwardOut('127.0.0.1',socket.remotePort,'127.0.0.1',port,(error,stream)=>{
+            if(error){socket.destroy();return;}
+            socket.pipe(stream).pipe(socket);socket.on('error',()=>stream.destroy());stream.on('error',()=>socket.destroy());
+            socket.on('close',()=>stream.destroy());
+          });
+        });
+        await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
+        servers.push(server);ports.push(server.address().port);
+      }
+      return {ports,close:()=>{sockets.forEach(socket=>socket.destroy());servers.forEach(server=>server.close());}};
+    } catch(e) {servers.forEach(server=>server.close());throw e;}
+  };
+  return runner;
 }
 
 module.exports = { listManagerHosts, connect };

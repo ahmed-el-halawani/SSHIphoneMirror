@@ -28,10 +28,14 @@ function log(message, error = false) {
 }
 window.mirror.onProgress(log);
 function option(select, value, text) { const o = document.createElement('option'); o.value = value; o.textContent = text; select.append(o); }
+function deviceValue(device) { return (device.kind==='real'?'real:':'')+device.udid; }
+function selectedDevice() { return devices.find(device=>deviceValue(device)===$('simulators').value); }
 function setBusy(value) {
   running = value;
   for (const id of ['connect','attach','import','managerTab','manualTab','hosts','saved','host','username','port','password','chooseKey','clearKey','remember']) $(id).disabled = value;
   for (const id of ['simulators','open','disconnect','stop','home','shake','screenshot']) $(id).disabled = value || !ready;
+  $('shake').disabled = value || !ready || selectedDevice()?.kind==='real';
+  $('shake').title = selectedDevice()?.kind==='real'?'Shake is available for simulators only':'Shake device';
   $('connect').textContent = value ? 'Working…' : 'Connect & set up';
 }
 async function action(fn) {
@@ -84,16 +88,20 @@ $('connect').onclick = () => action(async () => {
   await refreshSaved();
   $('simulators').replaceChildren();
   devices = info.devices;
-  devices.forEach(d => option($('simulators'), d.udid, d.name));
+  for (const kind of ['real','simulator']) {
+    const group=document.createElement('optgroup');group.label=kind==='real'?'Real iPhones':'Simulators';
+    devices.filter(d=>(d.kind||'simulator')===kind).forEach(d=>option(group,deviceValue(d),d.name));
+    if(group.children.length)$('simulators').append(group);
+  }
   const preferred = info.devices.find(d => d.state === 'Booted') || info.devices[0];
-  $('simulators').value = preferred.udid; ready = true;
+  $('simulators').value = deviceValue(preferred); ready = true;
   updateDeviceState();
   await showPanel(false);
-  await window.mirror.start(preferred.udid);
+  await window.mirror.start(deviceValue(preferred));
 });
 function updateDeviceState() {
-  const d = devices.find(d => d.udid === $('simulators').value);
-  $('deviceState').textContent = d ? 'iOS ' + d.runtime.split('.iOS-').pop().replaceAll('-', '.') : 'Not attached';
+  const d = selectedDevice();
+  $('deviceState').textContent = d ? 'iOS ' + d.runtime.split('.iOS-').pop().replaceAll('-', '.') + (d.kind==='real'?' · Real iPhone':' · Simulator') : 'Not attached';
 }
 async function reconnect() { updateDeviceState(); await showPanel(false); await window.mirror.start($('simulators').value); }
 $('open').onclick = () => action(reconnect);

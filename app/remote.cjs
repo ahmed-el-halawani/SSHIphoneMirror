@@ -7,12 +7,22 @@ test "$(uname -s)" = Darwin || { echo 'This host is not a Mac.' >&2; exit 1; }
 xcode-select -p | grep -q '\\.app' || { echo 'Install full Xcode on this Mac, open it once, and accept its license. Command Line Tools alone cannot run iOS Simulator.' >&2; exit 1; }
 xcrun simctl list runtimes -j >/dev/null
 /usr/bin/python3 - <<'PY'
-import json, subprocess, platform
+import json, subprocess, platform, tempfile, pathlib
 def run(*args): return subprocess.check_output(args,text=True).strip()
 runtimes=json.loads(run('xcrun','simctl','list','runtimes','-j'))['runtimes']
 runtimes=[r for r in runtimes if r.get('isAvailable') and r.get('identifier','').startswith('com.apple.CoreSimulator.SimRuntime.iOS')]
 devices=json.loads(run('xcrun','simctl','list','devices','available','-j'))['devices']
-phones=[dict(udid=d['udid'],name=d['name'],state=d['state'],runtime=runtime) for runtime,ds in devices.items() for d in ds if d.get('isAvailable') and d['name'].startswith('iPhone')]
+phones=[dict(udid=d['udid'],name=d['name'],state=d['state'],runtime=runtime,kind='simulator') for runtime,ds in devices.items() for d in ds if d.get('isAvailable') and d['name'].startswith('iPhone')]
+try:
+  with tempfile.TemporaryDirectory(prefix='iphone-mirror-') as folder:
+    file=str(pathlib.Path(folder)/'devices.json')
+    subprocess.run(['xcrun','devicectl','list','devices','--json-output',file],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30)
+    physical=json.load(open(file)).get('result',{}).get('devices',[])
+  for d in physical:
+    h=d.get('hardwareProperties',{});p=d.get('deviceProperties',{});c=d.get('connectionProperties',{})
+    if h.get('deviceType')=='iPhone' and c.get('pairingState')=='paired':
+      phones.append(dict(udid=h['udid'],name=p.get('name','iPhone'),state='Connected',runtime=p.get('osVersionNumber',''),kind='real'))
+except (OSError,ValueError,subprocess.SubprocessError): pass
 print('MIRROR_JSON='+json.dumps(dict(os=run('sw_vers','-productVersion'),arch=platform.machine(),xcode=run('xcodebuild','-version').splitlines()[0],runtimes=len(runtimes),devices=phones)))
 PY`;
 

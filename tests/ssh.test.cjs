@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { Server } = require('ssh2');
 const { connect } = require('../app/connections.cjs');
+const net=require('node:net');
 
 test('manual SSH verifies host identity, authenticates, and executes scripts without a local shell', async () => {
   const key = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' });
@@ -40,4 +41,24 @@ test('manual SSH refuses an untrusted host key', async () => {
     await assert.rejects(connect({ kind: 'manual', host: '127.0.0.1', port: server.address().port, username: 'tester' },
       'test-only', async () => false, () => {}), /verification failed/);
   } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+test('real-device SSH forwarding binds loopback and restricts destination ports',async()=>{
+  const key=crypto.generateKeyPairSync('rsa',{modulusLength:2048}).privateKey.export({type:'pkcs1',format:'pem'});
+  const server=new Server({hostKeys:[key]},client=>{
+    client.on('authentication',ctx=>ctx.accept());client.on('error',()=>{});
+    client.on('tcpip',(accept,_reject,info)=>{assert.equal(info.destIP,'127.0.0.1');assert.equal(info.destPort,17425);const stream=accept();stream.pipe(stream);});
+  });
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  let conn,tunnel;
+  try{
+    conn=await connect({kind:'manual',host:'127.0.0.1',port:server.address().port,username:'tester'},'test-only',async()=>true,()=>{});
+    await assert.rejects(conn.forward([22]),/Unsupported device port/);
+    tunnel=await conn.forward([17425]);
+    const response=await new Promise((resolve,reject)=>{
+      const socket=net.connect(tunnel.ports[0],'127.0.0.1',()=>socket.write('tunnel-test'));
+      socket.on('data',data=>{resolve(data.toString());socket.destroy()});socket.on('error',reject);
+    });
+    assert.equal(response,'tunnel-test');
+  }finally{tunnel?.close();conn?.close();await new Promise(resolve=>server.close(resolve));}
 });
