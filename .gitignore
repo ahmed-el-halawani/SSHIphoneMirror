@@ -9,3 +9,5 @@ connections.json
 .env.local
 *.pem
 *.key
+__pycache__/
+*.pyc

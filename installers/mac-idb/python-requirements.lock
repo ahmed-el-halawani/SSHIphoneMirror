@@ -1,0 +1,7 @@
+aiofiles==25.1.0
+grpclib==0.4.9
+h2==4.4.1
+hpack==4.2.0
+hyperframe==6.1.0
+multidict==7.2.1
+protobuf==7.36.2

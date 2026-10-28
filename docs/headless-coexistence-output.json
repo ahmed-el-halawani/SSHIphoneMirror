@@ -1,0 +1,125 @@
+{
+  "passed": 5,
+  "samples": [
+    {
+      "action": "get_capabilities",
+      "durationMs": 2289
+    },
+    {
+      "action": "terminate_app",
+      "durationMs": 1752
+    },
+    {
+      "action": "launch_app",
+      "durationMs": 2876
+    },
+    {
+      "action": "wait_for",
+      "durationMs": 5752
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 3365
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 3153
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 3247
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 3027
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 3503
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 3124
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 3094
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 3134
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 3142
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 3367
+    },
+    {
+      "action": "wait_for",
+      "durationMs": 1987
+    },
+    {
+      "action": "type_text",
+      "durationMs": 3378
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 3596
+    },
+    {
+      "action": "get_ui_tree",
+      "durationMs": 2156
+    },
+    {
+      "action": "terminate_app",
+      "durationMs": 2092
+    },
+    {
+      "action": "launch_app",
+      "durationMs": 2943
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 6436
+    },
+    {
+      "action": "wait_for",
+      "durationMs": 3281
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 3459
+    },
+    {
+      "action": "wait_for",
+      "durationMs": 2677
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 3168
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 26691
+    },
+    {
+      "action": "terminate_app",
+      "durationMs": 1754
+    },
+    {
+      "action": "launch_app",
+      "durationMs": 2847
+    },
+    {
+      "action": "tap_element",
+      "durationMs": 8806
+    },
+    {
+      "action": "screenshot",
+      "durationMs": 1782
+    }
+  ]
+}

@@ -1,6 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('mirror', {
   profiles: () => ipcRenderer.invoke('mirror:profiles'),
+  mcpInfo: () => ipcRenderer.invoke('mirror:mcp-info'),
+  mcpAdd: input => ipcRenderer.invoke('mirror:mcp-add',input),
+  mcpCopy: input => ipcRenderer.invoke('mirror:mcp-copy',input),
   importHosts: () => ipcRenderer.invoke('mirror:import'),
   chooseKey: () => ipcRenderer.invoke('mirror:key'),
   setup: profile => ipcRenderer.invoke('mirror:setup', profile),

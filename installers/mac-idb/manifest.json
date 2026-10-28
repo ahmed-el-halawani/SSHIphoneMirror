@@ -1,0 +1,16 @@
+{
+  "commit": "1387b360a9dcad34573cb1d9f277e5a0eacfd804",
+  "cliVersion": "1.1.8",
+  "referenceEnvironment": {
+    "architecture": "x86_64",
+    "macOS": "15.8.1",
+    "xcode": "26.3",
+    "python": "3.14.9",
+    "xcodegen": "2.46.0",
+    "protoc": "36.2"
+  },
+  "referenceCompanionSha256": "d6fd2feccade9b703fe5733be2b11016f2d71c97603e80e4093f4766c6b15e9d",
+  "referenceBinaryIncluded": false,
+  "cleanRebuildVerified": false,
+  "uncheckedSendableStressReviewed": false
+}

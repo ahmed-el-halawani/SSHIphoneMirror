@@ -1,0 +1,140 @@
+diff --git a/Companion/main.swift b/Companion/main.swift
+index 61ca4d6..867da60 100644
+--- a/Companion/main.swift
++++ b/Companion/main.swift
+@@ -484,8 +484,12 @@ private func runCompanionServer(_ udid: String, userDefaults: UserDefaults, xcod
+     raceTasks.append(Task { try await idleMonitor.waitUntilExpired() })
+   }
+   if terminateOffline {
+-    nonisolated(unsafe) let target = target
+-    raceTasks.append(Task { try await awaitTargetOffline(target, logger: logger) })
++    struct SendableBox: @unchecked Sendable {
++      let target: CompanionTarget
++      let logger: ControlCoreLogger
++    }
++    let box = SendableBox(target: target, logger: logger)
++    raceTasks.append(Task { try await awaitTargetOffline(box.target, logger: box.logger) })
+   }
+   defer { raceTasks.forEach { $0.cancel() } }
+   _ = try await Task.select(raceTasks).value
+diff --git a/FBSimulatorCodeInjection/CodeInjectionSession.swift b/FBSimulatorCodeInjection/CodeInjectionSession.swift
+index fb209a3..8f63c77 100644
+--- a/FBSimulatorCodeInjection/CodeInjectionSession.swift
++++ b/FBSimulatorCodeInjection/CodeInjectionSession.swift
+@@ -16,7 +16,7 @@ public final class CodeInjectionSession: Sendable {
+ 
+   /// Answers a command the injected code sends back to the session mid-execute, as opaque bytes.
+   /// The injected code receives the bytes returned, or the description of the error.
+-  public typealias HostCommandHandler = (_ command: Data) async -> Result<Data, any Error>
++  public typealias HostCommandHandler = @Sendable (_ command: Data) async -> Result<Data, any Error>
+ 
+   /// Identifies the host process: the same when reattaching to an app still running from an
+   /// earlier session, and new when the host is relaunched.
+diff --git a/FBSimulatorCodeInjection/ControlSocketClient.swift b/FBSimulatorCodeInjection/ControlSocketClient.swift
+index 8a772b9..104efa0 100644
+--- a/FBSimulatorCodeInjection/ControlSocketClient.swift
++++ b/FBSimulatorCodeInjection/ControlSocketClient.swift
+@@ -101,7 +101,7 @@ final class ControlSocketClient: @unchecked Sendable {
+   /// Services a `host_command` the served process sends back *while* an `execute`
+   /// is in flight. Receives the command's bytes, opaque to this client, and returns
+   /// the command's outcome.
+-  typealias HostCommandHandler = (_ commandData: Data) async -> Result<Data, any Error>
++  typealias HostCommandHandler = @Sendable (_ commandData: Data) async -> Result<Data, any Error>
+ 
+   /// Sends a `{dylib, symbol}` command to the shim and returns its result. While
+   /// the served process runs the injected code it may send nested `host_command`
+diff --git a/PrivateHeaders/AccessibilityPlatformTranslation/AccessibilityPlatformTranslation.tbd b/PrivateHeaders/AccessibilityPlatformTranslation/AccessibilityPlatformTranslation.tbd
+index 66d23fe..2554fe6 100644
+--- a/PrivateHeaders/AccessibilityPlatformTranslation/AccessibilityPlatformTranslation.tbd
++++ b/PrivateHeaders/AccessibilityPlatformTranslation/AccessibilityPlatformTranslation.tbd
+@@ -1,11 +1,11 @@
+ --- !tapi-tbd
+ tbd-version: 4
+-targets: [ arm64-macos ]
++targets: [ arm64-macos, x86_64-macos ]
+ install-name: '/System/Library/PrivateFrameworks/AccessibilityPlatformTranslation.framework/Versions/A/AccessibilityPlatformTranslation'
+ current-version: 0
+ compatibility-version: 0
+ exports:
+-  - targets: [ arm64-macos ]
++  - targets: [ arm64-macos, x86_64-macos ]
+     objc-classes:
+       - AXPMacPlatformElement
+       - AXPTranslationObject
+diff --git a/PrivateHeaders/CoreSimulator/CoreSimulator.tbd b/PrivateHeaders/CoreSimulator/CoreSimulator.tbd
+index 9091276..3658d7e 100644
+--- a/PrivateHeaders/CoreSimulator/CoreSimulator.tbd
++++ b/PrivateHeaders/CoreSimulator/CoreSimulator.tbd
+@@ -1,11 +1,11 @@
+ --- !tapi-tbd
+ tbd-version: 4
+-targets: [ arm64-macos ]
++targets: [ arm64-macos, x86_64-macos ]
+ install-name: '/Library/Developer/PrivateFrameworks/CoreSimulator.framework/Versions/A/CoreSimulator'
+ current-version: 0
+ compatibility-version: 0
+ exports:
+-  - targets: [ arm64-macos ]
++  - targets: [ arm64-macos, x86_64-macos ]
+     objc-classes:
+       - SimDevice
+       - SimDeviceDarwinNotificationToken
+diff --git a/PrivateHeaders/SimPasteboardPlus/SimPasteboardPlus.tbd b/PrivateHeaders/SimPasteboardPlus/SimPasteboardPlus.tbd
+index 0fc0d6f..4bd74d9 100644
+--- a/PrivateHeaders/SimPasteboardPlus/SimPasteboardPlus.tbd
++++ b/PrivateHeaders/SimPasteboardPlus/SimPasteboardPlus.tbd
+@@ -1,11 +1,11 @@
+ --- !tapi-tbd
+ tbd-version: 4
+-targets: [ arm64-macos ]
++targets: [ arm64-macos, x86_64-macos ]
+ install-name: '/Library/Developer/PrivateFrameworks/CoreSimulator.framework/Versions/A/Frameworks/SimPasteboardPlus.framework/Versions/A/SimPasteboardPlus'
+ current-version: 0
+ compatibility-version: 0
+ exports:
+-  - targets: [ arm64-macos ]
++  - targets: [ arm64-macos, x86_64-macos ]
+     objc-classes:
+       - _TtC17SimPasteboardPlus22SimPasteboardInterface
+       - _TtC17SimPasteboardPlus30SimPasteboardInterfaceListener
+diff --git a/SimulatorFrameworkBridge/project.yml b/SimulatorFrameworkBridge/project.yml
+index d9dc45f..87ce92a 100644
+--- a/SimulatorFrameworkBridge/project.yml
++++ b/SimulatorFrameworkBridge/project.yml
+@@ -14,6 +14,7 @@ targetTemplates:
+       - path: ../FBSimulatorBridgeProtocol
+     settings:
+       base:
++        PRODUCT_NAME: FBSimulatorBridgeProtocol
+         PRODUCT_MODULE_NAME: FBSimulatorBridgeProtocol
+         SWIFT_VERSION: "6"
+     dependencies:
+@@ -25,6 +26,7 @@ targetTemplates:
+       - path: ../SimulatorIPC
+     settings:
+       base:
++        PRODUCT_NAME: SimulatorIPC
+         PRODUCT_MODULE_NAME: SimulatorIPC
+         SWIFT_VERSION: "6"
+     dependencies:
+diff --git a/build.sh b/build.sh
+index 7e5a1a5..c81085a 100755
+--- a/build.sh
++++ b/build.sh
+@@ -642,14 +642,14 @@ function invoke_xcodebuild() {
+   # Add -skipMacroValidation to work around sandbox restrictions on Swift macro plugins
+   # Add ENABLE_USER_SCRIPT_SANDBOXING=NO to disable sandbox for macros
+   # Add CLANG_ENABLE_EXPLICIT_MODULES=NO to mirror Configuration/Shared.xcconfig
+-  # Add ARCHS=arm64 to build arm64 only (no Intel/x86_64 slices).
++  # Add ARCHS=x86_64 to build arm64 only (no Intel/x86_64 slices).
+   local common_settings=(
+     -skipMacroValidation
+     -onlyUsePackageVersionsFromResolvedFile
+     -disableAutomaticPackageResolution
+     ENABLE_USER_SCRIPT_SANDBOXING=NO
+     CLANG_ENABLE_EXPLICIT_MODULES=NO
+-    ARCHS=arm64
++    ARCHS=x86_64
+   )
+   # Every invocation keeps its complete, unformatted output. A formatter only
+   # shows what it recognises, so the raw log is the record, and on failure its

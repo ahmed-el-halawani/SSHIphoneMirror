@@ -2,6 +2,7 @@ const $ = id => document.getElementById(id);
 let mode = 'mcp', hosts = [], saved = [], running = false, ready = false;
 let devices = [], panelVisible = false, live = false, viewing = '', revision = 0, refreshTask = null;
 let opening = false, deviceTask = null, cancelTask = null, choiceRevision = 0;
+let mcpSetup=null;
 function updateStageAccess() {
   const covered = panelVisible || live;
   document.querySelector('main').inert = covered;
@@ -13,9 +14,47 @@ async function showPanel(visible, name = 'connection') {
   updateStageAccess();
   $('connectionPanel').hidden = !visible;
   $('connectionPanel').classList.toggle('activity-only', name === 'activity');
-  $('panelTitle').textContent = name === 'activity' ? 'Activity' : 'Mac connection';
+  $('connectionPanel').classList.toggle('mcp-only', name === 'mcp');
+  $('mcpPanel').hidden=name!=='mcp';
+  $('mcpTab').setAttribute('aria-pressed',String(visible&&name==='mcp'));
+  $('panelTitle').textContent = name === 'mcp' ? 'MCP Setup' : name === 'activity' ? 'Activity' : 'Mac connection';
   if (visible) $('closePanel').focus();
+  if(visible&&name==='mcp')await refreshMcp();
 }
+function renderMcpSnippet() {
+  if(!mcpSetup)return;
+  const client=$('mcpClient').value;
+  $('mcpSnippet').value=mcpSetup.snippets[client];
+  $('mcpConfigPath').textContent=mcpSetup.files[client];
+}
+async function refreshMcp() {
+  try {
+    mcpSetup=await window.mirror.mcpInfo();
+    $('mcpHost').replaceChildren();
+    if(!mcpSetup.profiles.length)option($('mcpHost'),'','Connect a verified Mac first');
+    mcpSetup.profiles.forEach(p=>option($('mcpHost'),p.id,p.name));
+    if(mcpSetup.profiles.some(p=>p.id===mcpSetup.selected))$('mcpHost').value=mcpSetup.selected;
+    $('mcpControl').checked=!!mcpSetup.profiles.find(p=>p.id===$('mcpHost').value)?.control;
+    document.querySelectorAll('[data-mcp-add],#mcpCopy').forEach(button=>button.disabled=!mcpSetup.profiles.length);
+    renderMcpSnippet();
+  } catch(error) {$('mcpStatus').textContent=error.message;$('mcpStatus').classList.add('error');}
+}
+async function configureMcp(client,copy=false) {
+  document.querySelectorAll('[data-mcp-add],#mcpCopy').forEach(button=>button.disabled=true);
+  $('mcpStatus').classList.remove('error');
+  $('mcpStatus').textContent=copy?'Copying configuration…':'Adding MCP server…';
+  try {
+    const input={client,profileId:$('mcpHost').value,control:$('mcpControl').checked};
+    const result=await (copy?window.mirror.mcpCopy(input):window.mirror.mcpAdd(input));
+    $('mcpStatus').textContent=copy?'Configuration copied. Merge it into the file shown below.':`MCP added. Restart ${client==='claude'?'Claude Code':client==='codex'?'Codex':'OpenCode'} to load it.${result.backup?' Existing settings were backed up.':''}`;
+  } catch(error) {$('mcpStatus').textContent=error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/,'');$('mcpStatus').classList.add('error');}
+  finally {document.querySelectorAll('[data-mcp-add],#mcpCopy').forEach(button=>button.disabled=!mcpSetup?.profiles.length);}
+}
+$('mcpTab').onclick=()=>showPanel(true,'mcp');
+$('mcpClient').onchange=renderMcpSnippet;
+$('mcpHost').onchange=()=>{$('mcpControl').checked=!!mcpSetup?.profiles.find(p=>p.id===$('mcpHost').value)?.control;};
+$('mcpCopy').onclick=()=>configureMcp($('mcpClient').value,true);
+document.querySelectorAll('[data-mcp-add]').forEach(button=>button.onclick=()=>configureMcp(button.dataset.mcpAdd));
 window.mirror.onPanel(name => showPanel(true, name));
 function log(message, error = false) {
   const line = document.createElement('p'); line.textContent = message;

@@ -157,4 +157,14 @@ async function input(base,session,command) {
   return request(base,session,'/execute/sync','POST',{script,args:[args]});
 }
 
-module.exports={validateRealUdid,validateInput,install,startScript,request,input,cancel};
+function attachScript(udid) {
+  validateRealUdid(udid);
+  return `/usr/bin/python3 - ${quote(udid)} <<'PY'
+import json,pathlib,sys
+state=json.loads((pathlib.Path.home()/'.local/share/iphone-mirror-tools/current-session.json').read_text())
+if state.get('udid')!=sys.argv[1]: raise SystemExit('The existing session belongs to another iPhone.')
+print('MIRROR_JSON='+json.dumps(state))
+PY`;
+}
+
+module.exports={validateRealUdid,validateInput,install,startScript,attachScript,request,input,cancel};

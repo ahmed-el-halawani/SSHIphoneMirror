@@ -1,0 +1,12 @@
+{
+  "discoverManager": false,
+  "hosts": [
+    {
+      "id": "my-mac",
+      "kind": "mcp",
+      "hostId": "REPLACE_WITH_SSH_RESOURCE_MANAGER_HOST_UUID",
+      "name": "Development Mac",
+      "control": false
+    }
+  ]
+}

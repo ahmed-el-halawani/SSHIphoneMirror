@@ -1,0 +1,18 @@
+{
+  "formatVersion": 1,
+  "bundles": [
+    {
+      "bundleId": "idb-1387b360-x86_64-29b5972a175ba4e3",
+      "commit": "1387b360a9dcad34573cb1d9f277e5a0eacfd804",
+      "architecture": "x86_64",
+      "macOS": "15.8.1",
+      "xcode": "Xcode 26.3\nBuild version 17C529",
+      "pythonVersion": "Python 3.14.10",
+      "companionSha256": "29d5e1b67ac4ab0dd383bab6b381819f1f013940515e0aa2b6bc5bb0833a9c19",
+      "archive": "simulator-runtime-x86_64.tar.gz",
+      "archiveBytes": 43131325,
+      "archiveSha256": "dbab8d3340c092980dd215970204f1c663e66150af0b791a9f51aca89196f43e",
+      "manifestSha256": "389afd37e608ecef43340fb35436e6aff02f3b20ae6e0bf2da02a922afe457c4"
+    }
+  ]
+}

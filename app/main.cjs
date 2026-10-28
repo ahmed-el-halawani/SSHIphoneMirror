@@ -1,4 +1,4 @@
-const { app, BrowserWindow, WebContentsView, ipcMain, dialog, protocol, net, safeStorage, session, Menu, screen } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, dialog, protocol, net, safeStorage, session, Menu, screen, clipboard } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -6,6 +6,12 @@ const { validateProfile, validateUdid, resultJSON, viewerURL, viewerBounds } = r
 const connections = require('./connections.cjs');
 const remote = require('./remote.cjs');
 const real = require('./real-device.cjs');
+const { reserveViewer } = require('./automation/viewer-reservation.cjs');
+const { execute } = require('./automation/command-executor.cjs');
+const { ensureSimulatorRuntime } = require('./automation/simulator-runtime.cjs');
+const clientSetup = require('./mcp/client-setup.cjs');
+const readOnlyViewer = process.env.IPHONE_MIRROR_VIEWER_READ_ONLY === '1';
+let releaseViewer;
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'mirror', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
 let window, viewer, active, busy = false, storeWritable = true;
@@ -15,8 +21,7 @@ let pendingStart=null;
 async function closeReal() {
   const current=realSession;realSession=null;
   if(!current)return;
-  try { await fetch(`${current.base}/session/${current.sessionId}`,{method:'DELETE',signal:AbortSignal.timeout(5000)}); }
-  catch {} finally {await current.conn.run(real.cancel,10000).catch(()=>{});current.tunnel.close();current.conn.close();}
+  current.tunnel.close();current.conn.close();
 }
 let store = { profiles: [] };
 const storePath = () => path.join(app.getPath('userData'), 'connections.json');
@@ -53,7 +58,11 @@ async function runner() {
   }, log);
 }
 async function usingRunner(fn) { const conn = await runner(); try { return await fn(conn); } finally { conn.close(); } }
-function hideViewer() { if (viewer) { window.contentView.removeChildView(viewer); viewer.webContents.close(); viewer = null; } }
+async function hideViewer() {
+  if (viewer) { if(window)window.contentView.removeChildView(viewer); if(!viewer.webContents.isDestroyed())viewer.webContents.close(); viewer = null; }
+  const release=releaseViewer;releaseViewer=null;
+  if(release)await release();
+}
 function layoutViewer() {
   if (!viewer || !window) return;
   const [width, height] = window.getContentSize();
@@ -66,6 +75,7 @@ function openPanel(name) {
   window.webContents.send('mirror:panel', name);
 }
 async function deviceControl(command) {
+  if (readOnlyViewer) throw Error('This viewer is read-only.');
   if (!viewer) throw Error('Attach a device first.');
   if (!['home', 'shake'].includes(command)) throw Error('Unknown device control.');
   if(realSession) {
@@ -95,7 +105,6 @@ function zoomWindow(direction) {
     Math.max(600, Math.min(area.height, Math.round(direction === 'fit' ? 850 * scale : height * scale))));
 }
 async function showViewer(url, physical=false, signal) {
-  hideViewer();
   viewer = new WebContentsView({ webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, partition: 'persist:simulator',...(physical?{preload:path.join(__dirname,'real-preload.cjs')}:{}) } });
   viewer.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   viewer.webContents.session.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
@@ -106,7 +115,7 @@ async function showViewer(url, physical=false, signal) {
   viewer.webContents.on('console-message', details => {
     // Only our fixed status messages cross into the privileged app.
     const message = typeof details === 'object' ? details.message : '';
-    if (message === 'MIRROR_STREAM_READY') log('Live video connected. Click the screen to control the device.');
+    if (message === 'MIRROR_STREAM_READY') log(readOnlyViewer ? 'Live video connected. This viewer is read-only.' : 'Live video connected. Click the screen to control the device.');
     if (message === 'MIRROR_STREAM_DISCONNECTED') log('Video disconnected. Reconnect if it does not recover.');
   });
   window.contentView.addChildView(viewer);
@@ -124,8 +133,10 @@ async function showViewer(url, physical=false, signal) {
       page.loadURL(url).catch(finish);
     });
   }
-  catch { hideViewer(); throw Error(signal?.aborted ? 'Connection cancelled.' : 'The device viewer could not load. Try Reconnect again.'); }
+  catch { await hideViewer(); throw Error(signal?.aborted ? 'Connection cancelled.' : 'The device viewer could not load. Try Reconnect again.'); }
   viewer.webContents.focus();
+  if(readOnlyViewer && !physical)await viewer.webContents.executeJavaScript('void (sendControl = () => {});');
+  if(readOnlyViewer)log('Read-only viewer: video is connected; use the automation client for control.');
 }
 
 function handle(name, fn, exclusive = true) {
@@ -164,10 +175,35 @@ app.whenReady().then(async () => {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, target) => { if (target !== 'mirror://app/index.html') event.preventDefault(); });
   window.on('resize', layoutViewer);
-  window.on('closed', () => { if (viewer) viewer.webContents.close(); viewer = null; window = null; });
+  window.on('closed', () => { window = null; });
 
   handle('profiles', () => store.profiles.map(publicProfile), false);
+  const automationFile=()=>process.env.IPHONE_MIRROR_CONFIG || path.join(require('node:os').homedir(),'.iphone-mirror','automation.json');
+  const mcpLaunch=()=>clientSetup.launch(app.getAppPath(),process.execPath,automationFile());
+  handle('mcp-info',()=>{
+    const config=require('./automation/connection-profiles.cjs').loadConfig(automationFile());
+    const profiles=store.profiles.filter(p=>p.kind==='mcp' || p.keyPath&&p.fingerprint).map(p=>({id:clientSetup.profileId(p),name:p.name,control:config.hosts.some(h=>clientSetup.profileId(h)===clientSetup.profileId(p)&&h.control)}));
+    const server=mcpLaunch();
+    return {profiles,selected:active?clientSetup.profileId(active.profile):profiles[0]?.id,files:clientSetup.locations(),snippets:Object.fromEntries(['claude','codex','opencode'].map(client=>[client,clientSetup.snippet(client,server)]))};
+  },false);
+  function prepareMcp(input) {
+    if(!input || !['claude','codex','opencode'].includes(input.client) || typeof input.control!=='boolean')throw Error('Invalid MCP setup request.');
+    const profile=store.profiles.find(p=>clientSetup.profileId(p)===input.profileId);
+    if(!profile)throw Error('Connect to a Mac with SSH Resource Manager or a verified SSH key first.');
+    clientSetup.enroll(profile,input.control,automationFile());
+    return mcpLaunch();
+  }
+  handle('mcp-add',input=>{
+    const server=prepareMcp(input);
+    return clientSetup.installClient(input.client,server);
+  });
+  handle('mcp-copy',input=>{
+    const server=prepareMcp(input);
+    clipboard.writeText(clientSetup.snippet(input.client,server));
+    return {copied:true};
+  });
   ipcMain.handle('mirror:real-input',async(event,input)=>{
+    if(readOnlyViewer)throw Error('This viewer is read-only.');
     if(!viewer || event.sender!==viewer.webContents || event.senderFrame?.url!=='mirror://viewer/real.html' || !realSession)throw Error('No authorized iPhone viewer.');
     return real.input(realSession.base,realSession.sessionId,input);
   });
@@ -211,7 +247,7 @@ app.whenReady().then(async () => {
       if (!safeStorage.isEncryptionAvailable()) throw Error('Windows credential encryption is unavailable. Enter the password again.');
       password = safeStorage.decryptString(Buffer.from(previous.encryptedPassword, 'base64'));
     }
-    hideViewer();
+    await hideViewer();
     await closeReal();
     active = { profile, password, fingerprint: previous?.fingerprint };
     log('Connecting over SSH and checking macOS / Xcode…');
@@ -226,6 +262,10 @@ app.whenReady().then(async () => {
         info = resultJSON(await conn.run(remote.probe));
       }
       if (!info.devices.length) throw Error('No available iPhones. Connect a trusted real iPhone or create a simulator in Xcode and retry.');
+      if(info.devices.some(device=>device.kind==='simulator')) {
+        try {await ensureSimulatorRuntime(conn,log);}
+        catch(error) {if(error.code!=='UNSUPPORTED_RUNTIME')throw error;log('Mirroring is ready. Simulator automation needs a compatible runtime for this Mac and Xcode.');}
+      }
       return info;
     });
     const stored = { ...profile, ...(active.fingerprint ? { fingerprint: active.fingerprint } : {}) };
@@ -245,56 +285,71 @@ app.whenReady().then(async () => {
     try {
     if(typeof udid==='string' && udid.startsWith('real:')) {
       const device=real.validateRealUdid(udid.slice(5));
-      hideViewer();await closeReal();
+      await hideViewer();await closeReal();
       const conn=await runner();let tunnel;
       try {
+        if(!readOnlyViewer)releaseViewer=await reserveViewer(conn,'real:'+device);
+        let info;
+        if(readOnlyViewer)info=resultJSON(await conn.run(real.attachScript(device),30000,controller.signal));
+        else {
         log('Installing real-iPhone tools if needed…');
         await conn.run(real.install,600000,controller.signal);
         log('Signing, installing and starting WebDriverAgent. Keep the iPhone unlocked; first setup can take several minutes…');
-        const info=resultJSON(await conn.runSigned(real.startScript(device),720000,controller.signal));
+        info=resultJSON(await conn.runSigned(real.startScript(device),720000,controller.signal));
+        }
         tunnel=await conn.forward([17425,19100],controller.signal);
         if(controller.signal.aborted)throw Error('Connection cancelled.');
         realSession={...info,conn,tunnel,base:`http://127.0.0.1:${tunnel.ports[0]}`,stream:`http://127.0.0.1:${tunnel.ports[1]}`};
         await real.request(realSession.base,info.sessionId,'/window/rect');
         await showViewer('mirror://viewer/real.html',true,controller.signal);
         return {connected:true,kind:'real'};
-      } catch(e) {tunnel?.close();await conn.run(real.cancel,15000).catch(()=>{});conn.close();realSession=null;throw e;}
+      } catch(e) {await hideViewer();tunnel?.close();if(!readOnlyViewer)await conn.run(real.cancel,15000).catch(()=>{});conn.close();realSession=null;throw e;}
     }
     validateUdid(udid);
+    await hideViewer();
     await closeReal();
     log('Booting the simulator and starting its stream. First boot can take a few minutes…');
+    const reservationConn=await runner();
+    try {
+      if(!readOnlyViewer) {
+        const release=await reserveViewer(reservationConn,udid);
+        releaseViewer=async()=>{try{await release();}finally{reservationConn.close();}};
+      } else reservationConn.close();
+    } catch(e) {reservationConn.close();throw e;}
     const data = await usingRunner(async conn => resultJSON(await conn.run(remote.startScript(udid), 600000,controller.signal)));
     await showViewer(viewerURL(data.url, udid),false,controller.signal);
     return { connected: true };
-    } finally {if(pendingStart===pending)pendingStart=null;pending.resolve();}
+    } catch(e) {await hideViewer();throw e;}
+    finally {if(pendingStart===pending)pendingStart=null;pending.resolve();}
   });
   handle('cancel-start', async()=>{
     const pending=pendingStart;
     if(!pending)return;
     pending.controller.abort();await pending.done;
-    hideViewer();await closeReal();
-    if(pending.physical)await usingRunner(conn=>conn.run(real.cancel,15000));
+    await hideViewer();await closeReal();
+    if(pending.physical&&!readOnlyViewer)await usingRunner(conn=>conn.run(real.cancel,15000));
     log('Connection cancelled. You can choose another device.');
   },false);
   handle('devices', () => usingRunner(async conn => resultJSON(await conn.run(remote.probe))));
   handle('shutdown', async udid => {
+    if(readOnlyViewer)throw Error('This viewer is read-only.');
     validateUdid(udid);
     // Shutting down one simulator never quits Simulator.app or the other devices.
-    await usingRunner(conn => conn.run(remote.shutdownScript(udid)));
+    await usingRunner(conn => execute(conn,'shutdown_simulator',{deviceId:udid}));
     log('Selected simulator shut down. Other devices remain running.');
   });
-  handle('disconnect', async () => { hideViewer(); await closeReal(); log('Viewer disconnected. Your devices remain open.'); });
-  handle('stop', async () => { hideViewer(); await closeReal(); await usingRunner(conn => conn.run(remote.stop)); log('Streaming stopped.'); });
+  handle('disconnect', async () => { await hideViewer(); await closeReal(); log('Viewer disconnected. Your devices remain open.'); });
+  handle('stop', async () => { await hideViewer(); await closeReal(); await usingRunner(conn => conn.run(remote.stop)); log('Streaming stopped.'); });
   await window.loadURL('mirror://app/index.html');
   window.show();
 });
 app.on('window-all-closed', () => app.quit());
 app.on('before-quit',event=>{
-  if(!realSession&&!pendingStart)return;
+  if(!realSession&&!pendingStart&&!releaseViewer)return;
   event.preventDefault();
   const pending=pendingStart;pending?.controller.abort();
   (async()=>{
-    if(pending){await pending.done;if(pending.physical)await usingRunner(conn=>conn.run(real.cancel,15000)).catch(()=>{});}
-    await closeReal();
-  })().finally(()=>app.quit());
+    if(pending){await pending.done;if(pending.physical&&!readOnlyViewer)await usingRunner(conn=>conn.run(real.cancel,15000)).catch(()=>{});}
+    await hideViewer();await closeReal();
+  })().catch(error=>log(error.message)).finally(()=>app.quit());
 });

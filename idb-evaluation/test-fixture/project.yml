@@ -1,0 +1,19 @@
+name: TestFixture
+options:
+  bundleIdPrefix: com.evaluation
+targets:
+  TestFixture:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - Sources
+    settings:
+      base:
+        PRODUCT_NAME: TestFixture
+        PRODUCT_BUNDLE_IDENTIFIER: com.evaluation.TestFixture
+        INFOPLIST_FILE: Sources/Info.plist
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGNING_ALLOWED: "NO"
+        SWIFT_VERSION: "5.0"

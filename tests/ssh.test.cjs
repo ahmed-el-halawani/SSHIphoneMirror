@@ -4,6 +4,24 @@ const crypto = require('node:crypto');
 const { Server } = require('ssh2');
 const { connect } = require('../app/connections.cjs');
 const net=require('node:net');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+
+test('SSH streams binary uploads without treating their bytes as a script',async()=>{
+  const key=crypto.generateKeyPairSync('rsa',{modulusLength:2048}).privateKey.export({type:'pkcs1',format:'pem'});
+  const bytes=crypto.randomBytes(1024*1024+17),chunks=[];
+  const folder=fs.mkdtempSync(path.join(os.tmpdir(),'mirror-upload-')),file=path.join(folder,'archive');fs.writeFileSync(file,bytes);
+  const server=new Server({hostKeys:[key]},client=>{
+    client.on('authentication',ctx=>ctx.accept());client.on('error',()=>{});
+    client.on('ready',()=>client.on('session',accept=>accept().on('exec',(accept,_reject,info)=>{
+      assert.match(info.command,/^sh -c /);const stream=accept();stream.on('data',data=>chunks.push(data));
+      stream.on('end',()=>{stream.write('uploaded');stream.exit(0);stream.end();});
+    })));
+  });
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let conn;
+  try{conn=await connect({kind:'manual',host:'127.0.0.1',port:server.address().port,username:'tester'},'test-only',async()=>true,()=>{});
+    assert.equal(await conn.run('cat > /test/archive',30000,undefined,{inputFile:file,quiet:true}),'uploaded');assert.deepEqual(Buffer.concat(chunks),bytes);
+  }finally{conn?.close();await new Promise(resolve=>server.close(resolve));fs.rmSync(folder,{recursive:true,force:true});}
+});
 
 test('manual SSH verifies host identity, authenticates, and executes scripts without a local shell', async () => {
   const key = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs1', format: 'pem' });
