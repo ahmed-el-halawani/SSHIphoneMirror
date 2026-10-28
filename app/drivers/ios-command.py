@@ -361,7 +361,7 @@ def dispatch(args):
             reservation.unlink(missing_ok=True)
             return {'released': True}
         if reservation.exists() and action not in ('get_capabilities', 'get_ui_tree', 'screenshot', 'wait_for', 'get_device_logs'):
-            fail('DEVICE_BUSY', 'A manual viewer owns device control. Detach it or open a read-only viewer.')
+            fail('DEVICE_BUSY', 'A manual viewer owns device control. In iPhone Mirror choose View > Watch agent (read-only) to watch while the agent controls the device, or detach the viewer.')
         if action == 'shutdown_simulator':
             if device.startswith('real:'):
                 fail('INVALID_ARGUMENT', 'Only simulators support shutdown here.')

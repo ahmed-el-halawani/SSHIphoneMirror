@@ -24,15 +24,25 @@ async function harness() {
   const main=new Element('main');
   const document={getElementById:id=>entries.get(id),createElement:tag=>new Element(tag),createTextNode:text=>({textContent:text}),querySelector:()=>main,querySelectorAll:()=>[],addEventListener(){},hasFocus:()=>false,activeElement:null};
   const info={devices:[{udid:a,name:'iPhone A',kind:'simulator',state:'Booted',runtime:'iOS-26-3'},{udid:b,name:'iPhone B',kind:'simulator',state:'Booted',runtime:'iOS-26-3'},{udid:c,name:'iPhone C',kind:'simulator',state:'Shutdown',runtime:'iOS-26-3'}]};
-  let progress;
-  const mirror={profiles:async()=>[],importHosts:async()=>[{kind:'mcp',hostId:'test',name:'Mac',target:'mac.local'}],setup:async()=>structuredClone(info),devices:async()=>{calls.devices++;return structuredClone(info)},panel:async()=>{},onPanel(){},onAction(){},onProgress:fn=>{progress=fn},
+  let progress,menuAction;
+  const mirror={profiles:async()=>[],importHosts:async()=>[{kind:'mcp',hostId:'test',name:'Mac',target:'mac.local'}],setup:async()=>structuredClone(info),devices:async()=>{calls.devices++;return structuredClone(info)},panel:async()=>{},onPanel(){},onAction(fn){menuAction=fn},onProgress:fn=>{progress=fn},
     start:async id=>{calls.start.push(id);if(mirror.failStart)throw Error('Boot failed');info.devices.find(d=>d.udid===id).state='Booted';},
     shutdown:async id=>{calls.shutdown.push(id);info.devices.find(d=>d.udid===id).state='Shutdown';},disconnect:async()=>{calls.disconnect++;},stop:async()=>{},control:async()=>{},screenshot:async()=>{},chooseKey:async()=>''};
   vm.runInNewContext(fs.readFileSync('app/renderer.js','utf8'),{document,window:{mirror},setInterval:fn=>intervals.push(fn)});
   await tick();
   entries.get('hosts').value='0';
-  return {entries,info,calls,intervals,mirror,progress:message=>progress(message),labels:()=>entries.get('simulators').children.flatMap(group=>group.children.length?group.children.map(o=>o.textContent):[group.textContent])};
+  return {entries,info,calls,intervals,mirror,menuAction:command=>menuAction(command),progress:message=>progress(message),labels:()=>entries.get('simulators').children.flatMap(group=>group.children.length?group.children.map(o=>o.textContent):[group.textContent])};
 }
+
+test('Watch agent changes viewer mode before reconnecting the selected simulator',async()=>{
+  const h=await harness();await h.entries.get('connect').onclick();
+  h.entries.get('simulators').value=a;await h.entries.get('simulators').onchange();
+  const events=[];h.mirror.watchAgent=async()=>events.push('release-and-switch');
+  const start=h.mirror.start;h.mirror.start=async id=>{events.push('reconnect');return start(id)};
+  await h.menuAction('watch-agent');assert.deepEqual(events,['release-and-switch','reconnect']);assert.equal(h.calls.start.at(-1),a);
+  h.mirror.watchAgent=async()=>{throw Error('Reservation release failed')};events.length=0;
+  await h.menuAction('watch-agent');assert.deepEqual(events,[]);assert.match(h.entries.get('status').textContent,/Reservation release failed/);
+});
 
 test('connecting discovers running devices without selecting, booting or opening one',async()=>{
   const h=await harness();await h.entries.get('connect').onclick();

@@ -250,6 +250,11 @@ $('closeWindow').onclick = () => window.mirror.windowAction('close');
 document.querySelectorAll('[data-menu]').forEach(button => { button.onclick = () => window.mirror.menu(button.dataset.menu, canShutdown(selectedDevice())); });
 document.querySelectorAll('[data-zoom]').forEach(button => { button.onclick = () => window.mirror.zoom(button.dataset.zoom); });
 window.mirror.onAction(command => {
+  if (command === 'watch-agent') return action(async () => {
+    await window.mirror.watchAgent();
+    viewing = ''; live = false; updateStageAccess(); updateDeviceState();
+    if (ready && selectedDevice()) await reconnect();
+  });
   if (command === 'reconnect') ready ? openSelected() : $('attach').click();
   else if (['home','shake','screenshot','disconnect','stop','refresh','shutdown'].includes(command)) $(command).click();
 });

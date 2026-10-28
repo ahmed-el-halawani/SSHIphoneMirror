@@ -126,6 +126,8 @@ Command payloads and IDB CLI arguments are supplied over stdin, including text i
 
 macOS `fcntl.flock` protects the whole logical operation, including resolve, tap and verification. All real iPhones use a single host lock because the current Appium ports and state are single-device resources. Contention returns `DEVICE_BUSY` without queuing a delayed tap.
 
+To watch the Simulator while an agent installs apps or sends input, choose **View > Watch agent (read-only)** in the desktop app. The app closes the manual attachment, releases its reservation and reconnects the video without taking control. This preference is saved across restarts. In this mode screen clicks, Home, Shake and simulator shutdown are blocked; MCP host control must still be enabled separately. Turn the option off to return to manual control. Switching back acquires the normal reservation before the viewer accepts input.
+
 A normal desktop viewer reserves device control for its attachment lifetime. It keeps using the original SimBeam/WDA input path; MCP mutation fails while it is attached. Read-only MCP inspection remains available. This deliberately gives one client control at a time.
 
 For video during AI input, start the desktop app with `IPHONE_MIRROR_VIEWER_READ_ONLY=1`. Simulator `sendControl` and real-device IPC input are disabled in that viewer. The video implementation is unchanged. Stop/restart that viewer to return to manual control.

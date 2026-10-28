@@ -10,7 +10,7 @@ const { reserveViewer } = require('./automation/viewer-reservation.cjs');
 const { execute } = require('./automation/command-executor.cjs');
 const { ensureSimulatorRuntime } = require('./automation/simulator-runtime.cjs');
 const clientSetup = require('./mcp/client-setup.cjs');
-const readOnlyViewer = process.env.IPHONE_MIRROR_VIEWER_READ_ONLY === '1';
+let readOnlyViewer = process.env.IPHONE_MIRROR_VIEWER_READ_ONLY === '1';
 let releaseViewer;
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'mirror', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
@@ -152,6 +152,7 @@ function handle(name, fn, exclusive = true) {
 app.whenReady().then(async () => {
   try { store = JSON.parse(fs.readFileSync(storePath(), 'utf8')); if (!Array.isArray(store.profiles)) throw Error('Invalid connections file'); }
   catch (e) { if (e.code !== 'ENOENT') { storeWritable = false; store = { profiles: [] }; dialog.showErrorBox('Saved connections could not be loaded', 'Your connections file could not be read. It will not be overwritten. Restore connections.json before saving new profiles.'); } }
+  readOnlyViewer = readOnlyViewer || store.watchAgent === true;
   const serveResource = async request => {
     const url = new URL(request.url);
     const name = url.pathname.slice(1);
@@ -223,13 +224,23 @@ app.whenReady().then(async () => {
     zoomWindow(direction);
   }, false);
   handle('control', deviceControl);
+  handle('watch-agent', async () => {
+    await hideViewer();
+    await closeReal();
+    const next = !readOnlyViewer;
+    store.watchAgent = next;
+    save();
+    readOnlyViewer = next;
+    log(next ? 'Watch agent enabled: video stays visible; the agent controls the device.' : 'Manual control enabled: agent actions pause while this viewer is attached.');
+    return next;
+  });
   handle('screenshot', screenshot);
   handle('menu', (name, canShutdown) => {
     const send = action => window.webContents.send('mirror:action', action);
     const menus = {
       Edit: [{ label: 'Connection settings…', click: () => openPanel('connection') }, { label: 'Activity log', click: () => openPanel('activity') }, { type: 'separator' }, { role: 'quit' }],
       Device: [{ label: 'Attach / reconnect device', click: () => send('reconnect') }, { label: 'Refresh device list', enabled: !!active, click: () => send('refresh') }, { label: 'Shut down selected simulator', enabled: !!active && canShutdown === true, click: () => send('shutdown') }, { type: 'separator' }, { label: 'Home', enabled: !!viewer, click: () => send('home') }, { label: 'Shake', enabled: !!viewer && !realSession, click: () => send('shake') }, { type: 'separator' }, { label: 'Save screenshot…', enabled: !!viewer, click: () => send('screenshot') }, { label: 'Disconnect viewer', enabled: !!viewer, click: () => send('disconnect') }, { label: 'Stop streaming on Mac', enabled: !!active, click: () => send('stop') }],
-      View: [{ label: 'Zoom in', click: () => zoomWindow('in') }, { label: 'Zoom out', click: () => zoomWindow('out') }, { label: 'Fit window', click: () => zoomWindow('fit') }, { type: 'separator' }, { label: 'Always on top', type: 'checkbox', checked: window.isAlwaysOnTop(), click: item => window.setAlwaysOnTop(item.checked) }, { label: 'Minimize', click: () => window.minimize() }]
+      View: [{ label: 'Watch agent (read-only)', type: 'checkbox', checked: readOnlyViewer, enabled: !busy, click: () => send('watch-agent') }, { type: 'separator' }, { label: 'Zoom in', click: () => zoomWindow('in') }, { label: 'Zoom out', click: () => zoomWindow('out') }, { label: 'Fit window', click: () => zoomWindow('fit') }, { type: 'separator' }, { label: 'Always on top', type: 'checkbox', checked: window.isAlwaysOnTop(), click: item => window.setAlwaysOnTop(item.checked) }, { label: 'Minimize', click: () => window.minimize() }]
     };
     if (!Object.hasOwn(menus, name)) throw Error('Unknown menu.');
     Menu.buildFromTemplate(menus[name]).popup({ window });

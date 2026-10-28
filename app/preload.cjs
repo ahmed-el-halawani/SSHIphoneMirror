@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('mirror', {
   windowAction: command => ipcRenderer.invoke('mirror:window', command),
   zoom: direction => ipcRenderer.invoke('mirror:zoom', direction),
   control: command => ipcRenderer.invoke('mirror:control', command),
+  watchAgent: () => ipcRenderer.invoke('mirror:watch-agent'),
   screenshot: () => ipcRenderer.invoke('mirror:screenshot'),
   menu: (name, canShutdown) => ipcRenderer.invoke('mirror:menu', name, canShutdown),
   onPanel: callback => ipcRenderer.on('mirror:panel', (_event, name) => callback(name)),
