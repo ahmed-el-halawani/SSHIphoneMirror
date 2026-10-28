@@ -20,7 +20,7 @@ async function execute(conn, action, args, signal) {
   }
   let result;
   try { result = JSON.parse(output.trim()); } catch { throw Object.assign(Error('Invalid driver response.'), { code: MUTATIONS.has(action) ? 'OUTCOME_UNKNOWN' : 'INVALID_RESPONSE' }); }
-  if (!result.ok) throw Object.assign(Error(result.error.message), { code: result.error.code, executed: result.executed, verified: result.verified });
+  if (!result.ok) throw Object.assign(Error(result.error.message), { code: result.error.code, causeCode: result.error.causeCode, stage: result.error.stage, executed: result.executed, verified: result.verified });
   if(action==='screenshot') {
     if(typeof result.image!=='string' || result.image.length>Math.ceil(16*1024*1024/3)*4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(result.image) || !Buffer.from(result.image,'base64').subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Object.assign(Error('Driver returned an invalid or oversized PNG.'),{code:'INVALID_RESPONSE'});
   }

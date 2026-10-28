@@ -54,6 +54,12 @@ test('screenshots have a separate bounded transfer budget and suppress SSH loggi
     return JSON.stringify({ok:true,image:Buffer.from([137,80,78,71,13,10,26,10]).toString('base64')});
   } }, 'screenshot', {});
 });
+
+test('unknown driver outcomes preserve the cause and stage without replaying input',async()=>{
+  let calls=0;
+  await assert.rejects(execute({run:async()=>{calls++;return JSON.stringify({ok:false,executed:null,verified:false,error:{code:'OUTCOME_UNKNOWN',causeCode:'TIMEOUT',stage:'idb.ui.tap',message:'Inspect state before retrying.'}})}},'tap',{}),e=>e.code==='OUTCOME_UNKNOWN'&&e.causeCode==='TIMEOUT'&&e.stage==='idb.ui.tap'&&e.executed===null);
+  assert.equal(calls,1);
+});
 test('manager recipes cannot turn off host verification',()=>{
   const {openSSHRunner}=require('../app/automation/ssh-transport.cjs');
   for(const mode of ['no','off','accept-new'])assert.throws(()=>openSSHRunner({executable:'ssh',argv:['ssh','-o','StrictHostKeyChecking='+mode,'mac']},()=>{}),/strict host-key/);

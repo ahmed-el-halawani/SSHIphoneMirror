@@ -95,3 +95,13 @@ Raw action timings without screen contents or input values are retained in `head
 One physical iPhone per Mac is supported by design. An older desktop build or an external controller that ignores these locks cannot participate in coordination. A crashed manual viewer leaves a reservation until explicitly recovered; this favors refusing control over risking conflicting input. IDB's private Apple APIs remain the main compatibility risk.
 
 The installer remains a development candidate until the outstanding qualification gates have evidence. Branch publication is separate from a production release.
+
+## Follow-up: runtime session isolation and timeout diagnostics
+
+A later live session exposed a gap in the original binary-selection claim: passing `--companion-path` chooses the spawn executable, but upstream IDB can first reuse a companion from its global `/tmp/idb/state` registry. The iPhone 16e was registered to an external `~/.local/bin/idb_companion`, while the bundled companion served a different Simulator. The driver now sets the pinned CLI's registry, socket, PID and log constants before importing its managers, using an app-owned, runtime-specific directory. It does not clear the global registry or kill external companions.
+
+During diagnosis the 8-logical-CPU Mac showed load averages around 74–82, 0% idle CPU, 16 GB physical memory used and about 447 MB unused. A read-only CLI import probe exceeded 20 seconds; its bounded trace was in Python source compilation. The driver now enables a private external bytecode cache with `-I -X pycache_prefix=...`, while keeping the verified runtime tree unchanged. These observations establish severe host pressure and startup cost; they do not prove the original tap was or was not delivered.
+
+Regression assertions cover private-directory ownership/mode/symlink rejection, runtime isolation of all IDB connection constants before manager imports, an external cache with isolated Python, and preservation of TIMEOUT/stage details without replaying an uncertain action. The prior global registry's checksum remained unchanged during read-only diagnosis.
+
+The updated driver completed a read-only screenshot and accessibility read against the active iPhone 16e. Its new app-owned registry pointed to a new process running `idb/current/bin/idb_companion`; the global registry checksum stayed unchanged. Under the observed pressure, initial isolated helper setup plus screenshot took 41.4 seconds and the following accessibility read took 17.8 seconds. These are diagnostic samples, not a performance guarantee or evidence that the original uncertain tap was delivered.

@@ -23,7 +23,7 @@ class Controller {
       const result = await execute(conn, action, args, signal);
       return { ...metadata, ...result, status: 'success', durationMs: Math.round(performance.now() - start) };
     } catch (error) {
-      return { ...metadata, ok: false, status: 'error', executed: error.executed ?? (error.code==='OUTCOME_UNKNOWN'?null:false), verified: error.verified ?? false, error: { code: error.code || 'CONFIGURATION_ERROR', message: error.message }, durationMs: Math.round(performance.now() - start) };
+      return { ...metadata, ok: false, status: 'error', executed: error.executed ?? (error.code==='OUTCOME_UNKNOWN'?null:false), verified: error.verified ?? false, error: { code: error.code || 'CONFIGURATION_ERROR', message: error.message, ...(error.causeCode?{causeCode:error.causeCode}:{}), ...(error.stage?{stage:error.stage}:{}) }, durationMs: Math.round(performance.now() - start) };
     } finally { conn?.close(); }
   }
 }

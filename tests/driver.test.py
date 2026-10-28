@@ -68,13 +68,50 @@ class DriverTests(unittest.TestCase):
         fake.idb = '/test/venv/bin/idb'
         fake.companion = '/test/companion'
         fake.device = 'simulator'
+        fake.session = pathlib.Path('/tmp/im-idb-test')
         fake.run = unittest.mock.Mock(return_value=b'')
         fake.cli('ui', 'text', 'sensitive value')
         argv, data = fake.run.call_args.args
         self.assertEqual(pathlib.Path(argv[0]).name, 'python')
-        self.assertEqual(argv[1:], ['-I', '-B', '-'])
+        self.assertEqual(argv[1:], ['-I', '-X', 'pycache_prefix=' + str(fake.session / 'pycache'), '-'])
         self.assertNotIn('sensitive value', str(argv))
         self.assertNotIn(b'sensitive value', data)
+
+    def test_cli_isolates_registry_sockets_and_logs_before_loading_idb(self):
+        fake = driver.Simulator.__new__(driver.Simulator)
+        fake.idb, fake.companion, fake.device = '/runtime/python/bin/idb', '/runtime/bin/idb_companion', 'simulator'
+        fake.session = pathlib.Path('/tmp/im-idb-private')
+        fake.run = unittest.mock.Mock(return_value=b'')
+        fake.cli('ui', 'tap', 10, 20)
+        bootstrap = fake.run.call_args.args[1].decode()
+        constants = types.ModuleType('idb.common.constants')
+        common = types.ModuleType('idb.common'); common.constants = constants
+        package = types.ModuleType('idb'); package.common = common
+        def loaded(file, run_name):
+            self.assertEqual(constants.BASE_IDB_FILE_PATH, str(fake.session))
+            self.assertEqual(constants.IDB_STATE_FILE_PATH, str(fake.session) + '/state')
+            self.assertEqual(constants.IDB_LOGS_PATH, str(fake.session) + '/logs')
+            self.assertEqual(constants.IDB_PID_PATH, str(fake.session) + '/pid')
+            self.assertEqual(file, fake.idb)
+        with patch.dict(sys.modules, {'idb': package, 'idb.common': common, 'idb.common.constants': constants}), patch('runpy.run_path', side_effect=loaded) as run, patch.object(sys, 'argv', []):
+            exec(bootstrap, {})
+            run.assert_called_once()
+        self.assertEqual(driver.STAGE, 'idb.ui.tap')
+
+    def test_session_directory_rejects_foreign_owners_symlinks_and_public_permissions(self):
+        with patch.object(driver.os, 'getuid', return_value=501, create=True), patch.object(driver.pathlib, 'Path') as paths:
+            paths.home.return_value = '/Users/test'
+            root = paths.return_value.__truediv__.return_value
+            root.lstat.return_value = types.SimpleNamespace(st_mode=driver.stat.S_IFDIR | 0o700, st_uid=501)
+            self.assertIs(driver.session_directory('runtime-a'), root)
+            first_name = paths.return_value.__truediv__.call_args.args[0]
+            driver.session_directory('runtime-b')
+            self.assertNotEqual(first_name, paths.return_value.__truediv__.call_args.args[0])
+            root.mkdir.assert_called_with(mode=0o700)
+            for mode, uid in [(driver.stat.S_IFLNK | 0o777,501),(driver.stat.S_IFDIR | 0o700,502),(driver.stat.S_IFDIR | 0o755,501)]:
+                root.lstat.return_value = types.SimpleNamespace(st_mode=mode, st_uid=uid)
+                with self.assertRaisesRegex(driver.Failure, 'not private'):
+                    driver.session_directory('runtime-a')
 
     def test_real_devices_share_one_host_lock(self):
         self.assertEqual(driver.reservation_path('real:a'), driver.reservation_path('real:b'))

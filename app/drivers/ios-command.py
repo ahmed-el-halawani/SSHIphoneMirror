@@ -9,6 +9,7 @@ import os
 import pathlib
 import platform
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -19,6 +20,7 @@ import urllib.error
 PIN = '1387b360a9dcad34573cb1d9f277e5a0eacfd804'
 LIMIT = 16 * 1024 * 1024
 EXECUTED = False
+STAGE = 'prepare'
 
 
 def mutate(operation, *args):
@@ -115,6 +117,20 @@ def reservation_path(device):
     return pathlib.Path.home() / '.local/share/iphone-mirror/locks' / (name + '.viewer.json')
 
 
+def session_directory(runtime_id):
+    # Keep Unix socket paths below macOS's limit and separate from other IDB installs.
+    identity = hashlib.sha256((str(pathlib.Path.home()) + ':' + runtime_id).encode()).hexdigest()[:16]
+    root = pathlib.Path('/tmp') / ('im-idb-' + str(os.getuid()) + '-' + identity)
+    try:
+        root.mkdir(mode=0o700)
+    except FileExistsError:
+        pass
+    info = root.lstat()
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
+        fail('ENGINE_NOT_READY', 'The app-owned IDB session directory is not private. Check its ownership and permissions.')
+    return root
+
+
 class Simulator:
     def __init__(self, device, deadline):
         self.device, self.deadline, self.api = device, deadline, 'ax'
@@ -136,6 +152,7 @@ class Simulator:
         if actual_hash != expected_hash:
             fail('COMPATIBILITY_MISMATCH', 'IDB companion checksum changed. Verify the pinned build before automation.')
         self.companion = companion
+        self.session = session_directory(self.runtime_id)
 
     def run(self, args, data=None):
         remaining = self.deadline - time.monotonic()
@@ -163,11 +180,14 @@ class Simulator:
             return result
 
     def cli(self, *args):
+        global STAGE
+        STAGE = 'idb.' + args[0] + ('.' + args[1] if args[0] == 'ui' else '')
         argv = [self.idb, '--companion-path', str(self.companion), *map(str, args), '--udid', self.device]
         # Keep field values out of process listings while using the installed CLI unchanged.
-        payload = base64.b64encode(json.dumps(argv).encode()).decode()
-        bootstrap = "import base64,json,runpy,sys;sys.argv=json.loads(base64.b64decode('" + payload + "'));runpy.run_path(sys.argv[0],run_name='__main__')"
-        return self.run([str(pathlib.Path(self.idb).with_name('python')), '-I', '-B', '-'], bootstrap.encode())
+        payload = base64.b64encode(json.dumps({'argv': argv, 'session': str(self.session)}).encode()).decode()
+        # Override constants before IDB imports its registry and companion managers.
+        bootstrap = "import base64,json,runpy,sys;import idb.common.constants as c;p=json.loads(base64.b64decode('" + payload + "'));sys.argv=p['argv'];c.BASE_IDB_FILE_PATH=p['session'];c.IDB_STATE_FILE_PATH=p['session']+'/state';c.IDB_LOGS_PATH=p['session']+'/logs';c.IDB_PID_PATH=p['session']+'/pid';runpy.run_path(sys.argv[0],run_name='__main__')"
+        return self.run([str(pathlib.Path(self.idb).with_name('python')), '-I', '-X', 'pycache_prefix=' + str(self.session / 'pycache'), '-'], bootstrap.encode())
 
     def tree(self, point=None):
         args = ['ui', 'describe-point', *[str(round(v)) for v in point]] if point else ['ui', 'describe-all']
@@ -458,7 +478,7 @@ def main():
         result = dispatch(args)
         print(json.dumps({'ok': True, **result}, ensure_ascii=True))
     except Failure as error:
-        print(json.dumps({'ok': False, 'executed': EXECUTED, 'verified': False, 'error': {'code': 'OUTCOME_UNKNOWN' if EXECUTED is None else error.code, 'message': 'An action may have executed. Inspect state before retrying.' if EXECUTED is None else str(error)}}))
+        print(json.dumps({'ok': False, 'executed': EXECUTED, 'verified': False, 'error': {'code': 'OUTCOME_UNKNOWN' if EXECUTED is None else error.code, 'causeCode': error.code, 'stage': STAGE, 'message': 'An action may have executed. Inspect state before retrying.' if EXECUTED is None else str(error)}}))
     except Exception:
         # Neither subprocess diagnostics nor text/field values cross this boundary.
         print(json.dumps({'ok': False, 'executed': EXECUTED, 'verified': False, 'error': {'code': 'OUTCOME_UNKNOWN' if EXECUTED is None else 'DRIVER_ERROR', 'message': 'Device operation failed. Inspect state before retrying actions.'}}))
