@@ -3,6 +3,8 @@ let mode = 'mcp', hosts = [], saved = [], running = false, ready = false;
 let devices = [], panelVisible = false, live = false, viewing = '', revision = 0, refreshTask = null;
 let opening = false, deviceTask = null, cancelTask = null, choiceRevision = 0;
 let mcpSetup=null;
+let viewerReadOnly=false;
+window.mirror.onViewerMode(value=>{viewerReadOnly=value;setBusy(running);});
 function updateStageAccess() {
   const covered = panelVisible || live;
   document.querySelector('main').inert = covered;
@@ -84,9 +86,10 @@ function setBusy(value) {
   $('openIcon').setAttribute('href', opening ? '#i-close' : '#i-reload');
   for (const id of ['disconnect','stop']) $(id).disabled = value || !viewing;
   for (const id of ['home','screenshot']) $(id).disabled = value || !viewing || !live;
-  $('shake').disabled = value || !viewing || !live || selected?.kind === 'real';
+  $('home').disabled ||= viewerReadOnly;
+  $('shake').disabled = value || !viewing || !live || viewerReadOnly || selected?.kind === 'real';
   $('shake').title = selected?.kind === 'real' ? 'Shake is available for simulators only' : 'Shake device';
-  $('shutdown').disabled = value || !canShutdown(selected);
+  $('shutdown').disabled = value || viewerReadOnly || !canShutdown(selected);
   $('connect').textContent = value ? 'Working…' : 'Connect to Mac';
 }
 async function action(fn) {
@@ -252,8 +255,6 @@ document.querySelectorAll('[data-zoom]').forEach(button => { button.onclick = ()
 window.mirror.onAction(command => {
   if (command === 'watch-agent') return action(async () => {
     await window.mirror.watchAgent();
-    viewing = ''; live = false; updateStageAccess(); updateDeviceState();
-    if (ready && selectedDevice()) await reconnect();
   });
   if (command === 'reconnect') ready ? openSelected() : $('attach').click();
   else if (['home','shake','screenshot','disconnect','stop','refresh','shutdown'].includes(command)) $(command).click();

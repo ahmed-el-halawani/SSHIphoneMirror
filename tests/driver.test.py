@@ -4,6 +4,7 @@ import pathlib
 import sys
 import types
 import unittest
+import tempfile
 from unittest.mock import patch
 sys.dont_write_bytecode = True
 
@@ -20,6 +21,24 @@ def element(identifier='button', **values):
 
 
 class DriverTests(unittest.TestCase):
+    def test_control_handoff_waits_for_owner_release_and_preserves_legacy_viewers(self):
+        device='8AA89128-E540-44BB-82FD-43999DDC6838'
+        with tempfile.TemporaryDirectory() as folder, patch.object(driver,'device_lock',return_value=contextlib.nullcontext()), patch.object(driver,'reservation_path',return_value=pathlib.Path(folder)/'viewer.json'):
+            driver.dispatch({'action':'reserve_viewer','deviceId':device,'token':'owner','handoff':True})
+            with self.assertRaisesRegex(driver.Failure,'Watch agent') as blocked:
+                driver.dispatch({'action':'tap','deviceId':device,'x':1,'y':1})
+            self.assertEqual(blocked.exception.code,'VIEWER_HANDOFF_REQUIRED')
+            self.assertFalse(driver.dispatch({'action':'request_control','deviceId':device})['ready'])
+            self.assertTrue(driver.dispatch({'action':'viewer_status','deviceId':device,'token':'owner'})['requested'])
+            driver.dispatch({'action':'release_viewer','deviceId':device,'token':'wrong'})
+            self.assertFalse(driver.dispatch({'action':'request_control','deviceId':device})['ready'])
+            driver.dispatch({'action':'release_viewer','deviceId':device,'token':'owner'})
+            self.assertTrue(driver.dispatch({'action':'request_control','deviceId':device})['ready'])
+            driver.dispatch({'action':'reserve_viewer','deviceId':device,'token':'old-viewer'})
+            with self.assertRaises(driver.Failure) as legacy:
+                driver.dispatch({'action':'request_control','deviceId':device})
+            self.assertEqual(legacy.exception.code,'DEVICE_BUSY')
+
     def test_exact_and_ambiguous(self):
         tree = {'elements': [element(), element('button_more')]}
         self.assertEqual(driver.resolve(tree, {'identifier': 'button'})['identifier'], 'button')

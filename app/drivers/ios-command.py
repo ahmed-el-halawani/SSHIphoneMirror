@@ -365,14 +365,46 @@ def dispatch(args):
     if not re.fullmatch(r'(?:[a-fA-F0-9]{8}(?:-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}|real:(?:[a-fA-F0-9]{8}-[a-fA-F0-9]{16}|[a-fA-F0-9]{40}))', device):
         fail('INVALID_ARGUMENT', 'Invalid device identifier.')
     deadline = time.monotonic() + args.get('timeoutMs', 30000) / 1000
+    if action == 'wait_viewer':
+        # One bounded SSH wait avoids starting a new Python process every second.
+        while True:
+            try:
+                state = json.loads(reservation_path(device).read_text())
+                if state.get('token') != args['token']:
+                    fail('RESERVATION_LOST', 'Another viewer owns the control reservation.')
+                if state.get('requestedUntil', 0) > time.time():
+                    return {'requested': True}
+            except FileNotFoundError:
+                fail('RESERVATION_LOST', 'Manual control reservation was released.')
+            except json.JSONDecodeError:
+                pass
+            if time.monotonic() >= deadline:
+                return {'requested': False}
+            time.sleep(0.25)
     with device_lock(device):
         reservation = reservation_path(device)
         if action == 'reserve_viewer':
             if reservation.exists():
                 fail('DEVICE_BUSY', 'A manual viewer already owns this device. Close it or recover its stale reservation explicitly.')
-            reservation.write_text(json.dumps({'token': args['token'], 'created': time.time()}))
+            reservation.write_text(json.dumps({'token': args['token'], 'created': time.time(), 'handoff': args.get('handoff') is True}))
             os.chmod(reservation, 0o600)
             return {'reserved': True}
+        if action == 'request_control':
+            if not reservation.exists():
+                return {'ready': True}
+            state = json.loads(reservation.read_text())
+            if state.get('handoff') is not True:
+                fail('DEVICE_BUSY', 'This viewer cannot switch automatically. Update iPhone Mirror or choose View > Watch agent (read-only).')
+            state['requestedUntil'] = time.time() + 20
+            reservation.write_text(json.dumps(state))
+            return {'ready': False}
+        if action == 'viewer_status':
+            if not reservation.exists():
+                fail('RESERVATION_LOST', 'Manual control reservation was released.')
+            state = json.loads(reservation.read_text())
+            if state.get('token') != args['token']:
+                fail('RESERVATION_LOST', 'Another viewer owns the control reservation.')
+            return {'requested': state.get('requestedUntil', 0) > time.time()}
         if action == 'release_viewer':
             if reservation.exists() and json.loads(reservation.read_text()).get('token') == args['token']:
                 reservation.unlink()
@@ -381,6 +413,8 @@ def dispatch(args):
             reservation.unlink(missing_ok=True)
             return {'released': True}
         if reservation.exists() and action not in ('get_capabilities', 'get_ui_tree', 'screenshot', 'wait_for', 'get_device_logs'):
+            if json.loads(reservation.read_text()).get('handoff') is True:
+                fail('VIEWER_HANDOFF_REQUIRED', 'Switch the attached viewer to Watch agent before sending input.')
             fail('DEVICE_BUSY', 'A manual viewer owns device control. In iPhone Mirror choose View > Watch agent (read-only) to watch while the agent controls the device, or detach the viewer.')
         if action == 'shutdown_simulator':
             if device.startswith('real:'):

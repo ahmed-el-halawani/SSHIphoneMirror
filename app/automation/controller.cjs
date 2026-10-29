@@ -1,6 +1,7 @@
 const profiles = require('./connection-profiles.cjs');
 const { execute, MUTATIONS } = require('./command-executor.cjs');
 const { ensureSimulatorRuntime } = require('./simulator-runtime.cjs');
+const { requestAgentControl } = require('./viewer-reservation.cjs');
 class Controller {
   constructor(config = profiles.loadConfig()) { this.config = config; this.readyHosts = new Set(); }
   async call(action, args = {}, signal) {
@@ -20,7 +21,14 @@ class Controller {
         await ensureSimulatorRuntime(conn,()=>{},signal);
         this.readyHosts.add(args.hostId);
       }
-      const result = await execute(conn, action, args, signal);
+      let result;
+      try {result=await execute(conn, action, args, signal);}
+      catch(error) {
+        if(!MUTATIONS.has(action)||error.code!=='VIEWER_HANDOFF_REQUIRED'||error.executed!==false)throw error;
+        await requestAgentControl(conn,args.deviceId,signal);
+        // The first attempt stopped at the reservation check, before dispatch.
+        result=await execute(conn,action,args,signal);
+      }
       return { ...metadata, ...result, status: 'success', durationMs: Math.round(performance.now() - start) };
     } catch (error) {
       return { ...metadata, ok: false, status: 'error', executed: error.executed ?? (error.code==='OUTCOME_UNKNOWN'?null:false), verified: error.verified ?? false, error: { code: error.code || 'CONFIGURATION_ERROR', message: error.message, ...(error.causeCode?{causeCode:error.causeCode}:{}), ...(error.stage?{stage:error.stage}:{}) }, durationMs: Math.round(performance.now() - start) };

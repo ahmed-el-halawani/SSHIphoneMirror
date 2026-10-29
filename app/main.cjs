@@ -12,6 +12,8 @@ const { ensureSimulatorRuntime } = require('./automation/simulator-runtime.cjs')
 const clientSetup = require('./mcp/client-setup.cjs');
 let readOnlyViewer = process.env.IPHONE_MIRROR_VIEWER_READ_ONLY === '1';
 let releaseViewer;
+let viewerDeviceId='',modeTask=null,noticeOpen=false;
+const realInputs=new Set();
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'mirror', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
 let window, viewer, active, busy = false, storeWritable = true;
@@ -59,9 +61,64 @@ async function runner() {
 }
 async function usingRunner(fn) { const conn = await runner(); try { return await fn(conn); } finally { conn.close(); } }
 async function hideViewer() {
+  viewerDeviceId='';
   if (viewer) { if(window)window.contentView.removeChildView(viewer); if(!viewer.webContents.isDestroyed())viewer.webContents.close(); viewer = null; }
-  const release=releaseViewer;releaseViewer=null;
-  if(release)await release();
+  await Promise.allSettled([...realInputs]);
+  const release=releaseViewer;
+  if(release){await release();if(releaseViewer===release)releaseViewer=null;}
+}
+function applyViewerMode(next) {
+  if(!viewer)return Promise.resolve();
+  const page=viewer.webContents,token=require('node:crypto').randomUUID();
+  return new Promise((resolve,reject)=>{
+    let settled=false;
+    const finish=error=>{if(settled)return;settled=true;clearTimeout(timer);ipcMain.removeListener('mirror:viewer-mode-applied',applied);page.removeListener('destroyed',closed);error?reject(error):resolve();};
+    const applied=(event,value)=>{if(event.sender===page&&value===token)finish();};
+    const closed=()=>finish(Error('Viewer closed while changing control mode.'));
+    const timer=setTimeout(()=>finish(Error('Viewer did not confirm its input mode. Reconnect before using agent control.')),5000);
+    ipcMain.on('mirror:viewer-mode-applied',applied);page.once('destroyed',closed);
+    try{page.send('mirror:viewer-mode',{readOnly:next,token});}catch(error){finish(error);}
+  });
+}
+async function claimViewerControl(deviceId,existingConnection) {
+  const conn=existingConnection || await runner();let owned;
+  try {
+    const release=await reserveViewer(conn,deviceId,async()=>{
+      if(pendingStart)await pendingStart.done;
+      if(viewerDeviceId===deviceId&&releaseViewer===owned)await setViewerMode(true);
+    });
+    owned=async()=>{await release();if(!existingConnection)conn.close();};
+    return owned;
+  } catch(error) {if(!existingConnection)conn.close();throw error;}
+}
+async function setViewerMode(next) {
+  if(modeTask)return modeTask.then(()=>setViewerMode(next));
+  modeTask=(async()=>{
+    if(next) {
+      readOnlyViewer=true;
+      window?.webContents.send('mirror:viewer-mode',true);
+      await applyViewerMode(true);
+      await Promise.allSettled([...realInputs]);
+      const release=releaseViewer;
+      if(release){await release();if(releaseViewer===release)releaseViewer=null;}
+    } else {
+      const claimed=viewerDeviceId&&!releaseViewer?await claimViewerControl(viewerDeviceId):null;
+      if(claimed)releaseViewer=claimed;
+      try {await applyViewerMode(false);}
+      catch(error){if(claimed){await claimed();if(releaseViewer===claimed)releaseViewer=null;}throw error;}
+      readOnlyViewer=false;
+      window?.webContents.send('mirror:viewer-mode',false);
+    }
+    store.watchAgent=next;
+    try{save();}catch{log('Control mode changed, but its preference could not be saved.');}
+    log(next?'Watch agent enabled: video stays visible; the agent controls the device.':'Manual control enabled: you control the device.');
+    return next;
+  })();
+  try{return await modeTask;}finally{modeTask=null;}
+}
+async function realInput(input) {
+  const task=real.input(realSession.base,realSession.sessionId,input);realInputs.add(task);
+  try{return await task;}finally{realInputs.delete(task);}
 }
 function layoutViewer() {
   if (!viewer || !window) return;
@@ -80,7 +137,7 @@ async function deviceControl(command) {
   if (!['home', 'shake'].includes(command)) throw Error('Unknown device control.');
   if(realSession) {
     if(command==='shake')throw Error('Shake is available for simulators only.');
-    return real.input(realSession.base,realSession.sessionId,{type:command});
+    return realInput({type:command});
   }
   await viewer.webContents.executeJavaScript(`sendControl({type:${JSON.stringify(command)}})`);
   viewer.webContents.focus();
@@ -105,7 +162,7 @@ function zoomWindow(direction) {
     Math.max(600, Math.min(area.height, Math.round(direction === 'fit' ? 850 * scale : height * scale))));
 }
 async function showViewer(url, physical=false, signal) {
-  viewer = new WebContentsView({ webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, partition: 'persist:simulator',...(physical?{preload:path.join(__dirname,'real-preload.cjs')}:{}) } });
+  viewer = new WebContentsView({ webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, partition: 'persist:simulator',preload:path.join(__dirname,'viewer-preload.cjs') } });
   viewer.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   viewer.webContents.session.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
   viewer.webContents.session.setPermissionCheckHandler(() => false);
@@ -135,7 +192,7 @@ async function showViewer(url, physical=false, signal) {
   }
   catch { await hideViewer(); throw Error(signal?.aborted ? 'Connection cancelled.' : 'The device viewer could not load. Try Reconnect again.'); }
   viewer.webContents.focus();
-  if(readOnlyViewer && !physical)await viewer.webContents.executeJavaScript('void (sendControl = () => {});');
+  await applyViewerMode(readOnlyViewer);
   if(readOnlyViewer)log('Read-only viewer: video is connected; use the automation client for control.');
 }
 
@@ -206,7 +263,18 @@ app.whenReady().then(async () => {
   ipcMain.handle('mirror:real-input',async(event,input)=>{
     if(readOnlyViewer)throw Error('This viewer is read-only.');
     if(!viewer || event.sender!==viewer.webContents || event.senderFrame?.url!=='mirror://viewer/real.html' || !realSession)throw Error('No authorized iPhone viewer.');
-    return real.input(realSession.base,realSession.sessionId,input);
+    return realInput(input);
+  });
+  ipcMain.on('mirror:read-only-attempt',async event=>{
+    if(!viewer||event.sender!==viewer.webContents||!readOnlyViewer||noticeOpen)return;
+    let url;try{url=new URL(event.senderFrame?.url || 'about:blank');}catch{return;}
+    if(url.protocol!=='mirror:'||url.host!=='viewer'||!['/client.html','/real.html'].includes(url.pathname))return;
+    noticeOpen=true;
+    try {
+      const result=await dialog.showMessageBox(window,{type:'info',title:'Watch agent mode',message:'You are viewing the device in read-only mode.',detail:'To tap or type yourself, open View and uncheck “Watch agent (read-only)”, or choose Switch to manual below. An agent can switch it back to view-only when it needs control.',buttons:['Keep watching','Switch to manual'],defaultId:0,cancelId:0});
+      if(result.response===1)await setViewerMode(false);
+    } catch(error){log(error.message);}
+    finally{noticeOpen=false;}
   });
   handle('panel', visible => {
     if (typeof visible !== 'boolean') throw Error('Invalid panel state.');
@@ -224,16 +292,7 @@ app.whenReady().then(async () => {
     zoomWindow(direction);
   }, false);
   handle('control', deviceControl);
-  handle('watch-agent', async () => {
-    await hideViewer();
-    await closeReal();
-    const next = !readOnlyViewer;
-    store.watchAgent = next;
-    save();
-    readOnlyViewer = next;
-    log(next ? 'Watch agent enabled: video stays visible; the agent controls the device.' : 'Manual control enabled: agent actions pause while this viewer is attached.');
-    return next;
-  });
+  handle('watch-agent', () => setViewerMode(!readOnlyViewer));
   handle('screenshot', screenshot);
   handle('menu', (name, canShutdown) => {
     const send = action => window.webContents.send('mirror:action', action);
@@ -297,9 +356,10 @@ app.whenReady().then(async () => {
     if(typeof udid==='string' && udid.startsWith('real:')) {
       const device=real.validateRealUdid(udid.slice(5));
       await hideViewer();await closeReal();
+      viewerDeviceId='real:'+device;
       const conn=await runner();let tunnel;
       try {
-        if(!readOnlyViewer)releaseViewer=await reserveViewer(conn,'real:'+device);
+        if(!readOnlyViewer)releaseViewer=await claimViewerControl('real:'+device,conn);
         let info;
         if(readOnlyViewer)info=resultJSON(await conn.run(real.attachScript(device),30000,controller.signal));
         else {
@@ -319,14 +379,9 @@ app.whenReady().then(async () => {
     validateUdid(udid);
     await hideViewer();
     await closeReal();
+    viewerDeviceId=udid;
     log('Booting the simulator and starting its stream. First boot can take a few minutes…');
-    const reservationConn=await runner();
-    try {
-      if(!readOnlyViewer) {
-        const release=await reserveViewer(reservationConn,udid);
-        releaseViewer=async()=>{try{await release();}finally{reservationConn.close();}};
-      } else reservationConn.close();
-    } catch(e) {reservationConn.close();throw e;}
+    if(!readOnlyViewer)releaseViewer=await claimViewerControl(udid);
     const data = await usingRunner(async conn => resultJSON(await conn.run(remote.startScript(udid), 600000,controller.signal)));
     await showViewer(viewerURL(data.url, udid),false,controller.signal);
     return { connected: true };
@@ -352,6 +407,7 @@ app.whenReady().then(async () => {
   handle('disconnect', async () => { await hideViewer(); await closeReal(); log('Viewer disconnected. Your devices remain open.'); });
   handle('stop', async () => { await hideViewer(); await closeReal(); await usingRunner(conn => conn.run(remote.stop)); log('Streaming stopped.'); });
   await window.loadURL('mirror://app/index.html');
+  window.webContents.send('mirror:viewer-mode',readOnlyViewer);
   window.show();
 });
 app.on('window-all-closed', () => app.quit());
@@ -362,5 +418,5 @@ app.on('before-quit',event=>{
   (async()=>{
     if(pending){await pending.done;if(pending.physical&&!readOnlyViewer)await usingRunner(conn=>conn.run(real.cancel,15000)).catch(()=>{});}
     await hideViewer();await closeReal();
-  })().catch(error=>log(error.message)).finally(()=>app.quit());
+  })().catch(error=>log(error.message)).finally(()=>{releaseViewer=null;app.quit();});
 });

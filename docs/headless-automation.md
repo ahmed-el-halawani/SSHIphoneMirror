@@ -128,11 +128,15 @@ Command payloads and IDB CLI arguments are supplied over stdin, including text i
 
 macOS `fcntl.flock` protects the whole logical operation, including resolve, tap and verification. All real iPhones use a single host lock because the current Appium ports and state are single-device resources. Contention returns `DEVICE_BUSY` without queuing a delayed tap.
 
-To watch the Simulator while an agent installs apps or sends input, choose **View > Watch agent (read-only)** in the desktop app. The app closes the manual attachment, releases its reservation and reconnects the video without taking control. This preference is saved across restarts. In this mode screen clicks, Home, Shake and simulator shutdown are blocked; MCP host control must still be enabled separately. Turn the option off to return to manual control. Switching back acquires the normal reservation before the viewer accepts input.
+Choose **View > Watch agent (read-only)** to switch between manual input and viewing while the mirror stays connected. The same video view and stream remain alive; the Simulator and app are not restarted. Switching to manual first acquires the device reservation, then enables screen input. Switching to Watch agent blocks input and cancels unsent gestures before releasing the reservation. The preference is saved across restarts; `IPHONE_MIRROR_VIEWER_READ_ONLY=1` can select the initial mode.
 
-A normal desktop viewer reserves device control for its attachment lifetime. It keeps using the original SimBeam/WDA input path; MCP mutation fails while it is attached. Read-only MCP inspection remains available. This deliberately gives one client control at a time.
+Touching the screen in Watch agent mode shows a dialog explaining the mode and the View-menu switch, with a **Switch to manual** shortcut. This dialog is triggered by the user's touch; it is never an approval requirement for the agent. Home, Shake and shutdown controls are disabled in view-only mode; screenshots remain available.
 
-For video during AI input, start the desktop app with `IPHONE_MIRROR_VIEWER_READ_ONLY=1`. Simulator `sendControl` and real-device IPC input are disabled in that viewer. The video implementation is unchanged. Stop/restart that viewer to return to manual control.
+When an authorized MCP action needs control, a compatible manual viewer switches to Watch agent **automatically, without asking the user**. The first driver attempt rejects the action before dispatch with `VIEWER_HANDOFF_REQUIRED`; the MCP controller requests a handoff through the Mac reservation file and waits up to 15 seconds. The desktop acknowledges that its input gate is active, drains already-dispatched real-iPhone requests, and releases its own token. Only then does MCP send the device action. Unknown outcomes are never replayed. Read-only MCP tools do not require takeover.
+
+A bounded SSH watcher handles this protocol across computers without a public port or Mac login agent. A missing or outdated viewer cannot acknowledge takeover, so control remains blocked with `DEVICE_BUSY`. Update the desktop viewer and restart the MCP client after installing the update. Switching back to manual during an active MCP operation fails safely until that operation finishes. Shared simultaneous control is not implemented.
+
+SimBeam's input protocol does not acknowledge completion of individual gestures. The input gate blocks future input and cancels gestures that have not been sent; a gesture already dispatched can still finish. There is no automatic replay of it.
 
 A crash or SSH failure during release can leave a viewer reservation. It fails closed rather than guessing that manual control stopped. Close every viewer for that device, then explicitly recover:
 
@@ -164,6 +168,7 @@ $env:MIRROR_TEST_HOST = 'SSH_RESOURCE_MANAGER_HOST_UUID'
 $env:MIRROR_TEST_DEVICE = 'BOOTED_SIMULATOR_UUID'
 npm run test:live
 node tests/live-provision.cjs
+node tests/live-viewer-handoff.cjs
 node tests/live-coordination.cjs
 npm run dist -- --publish never
 ```

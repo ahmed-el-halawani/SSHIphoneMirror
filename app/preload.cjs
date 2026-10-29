@@ -22,5 +22,6 @@ contextBridge.exposeInMainWorld('mirror', {
   menu: (name, canShutdown) => ipcRenderer.invoke('mirror:menu', name, canShutdown),
   onPanel: callback => ipcRenderer.on('mirror:panel', (_event, name) => callback(name)),
   onAction: callback => ipcRenderer.on('mirror:action', (_event, action) => callback(action)),
+  onViewerMode: callback => ipcRenderer.on('mirror:viewer-mode', (_event, value) => callback(value)),
   onProgress: callback => ipcRenderer.on('mirror:progress', (_event, message) => callback(message))
 });
