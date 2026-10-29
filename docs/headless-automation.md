@@ -1,6 +1,10 @@
-# Headless iOS automation
+# iOS automation with the desktop viewer
 
-The Windows Node process serves MCP over stdio and calls IDB or Appium on the Mac over the existing SSH transport. Electron is not required for source execution. The installed executable supplies its own Node runtime. No persistent Mac agent, public automation port, guest AX bridge, or direct gRPC client is installed.
+The Windows Node process serves MCP over stdio and calls IDB or Appium on the Mac over the existing SSH transport. MCP opens the desktop app automatically. Selecting a device through an MCP tool connects the desktop to that Mac and opens the selected device in **Watch agent (read-only)** mode. A stopped simulator is booted for viewing. For real iPhones, `ios_start_session` starts or reuses WDA first, then the viewer attaches to that session.
+
+Closing the window disconnects its video and viewer tunnels and hides the app in the system tray. Subsequent MCP calls leave it hidden. The simulator, WDA session, and the separate MCP connection keep running. Choose **Show iPhone Mirror** in the tray menu, or double-click its icon, to reconnect to the latest agent-selected device. **Quit iPhone Mirror** exits the desktop app; it does not terminate the separate agent process or its device session.
+
+The desktop and MCP coordinate over an authenticated local named pipe (a local socket on other platforms). Device requests are validated, Mac profiles still come from local enrollment, and credentials and screen contents are not sent through the bridge. Source execution requires the Electron development runtime; the installed executable supplies its own runtime. No public automation port is exposed.
 
 ## Setup from the desktop
 
@@ -159,6 +163,20 @@ SSH access and full Xcode must already be configured, with Apple’s first-run/l
 `installers/mac-idb/build-runtime.py` is the maintainer packaging script. It consumes a fresh native build at the pinned IDB commit and the checksum-pinned Astral portable-Python archive, builds the CLI wheel, and produces the runtime plus catalog entry. The older `manifest.json` records the original experimental reference build; the shipped catalog is authoritative for automatic provisioning. Never replace the active runtime during an automation operation.
 
 To disable automation, remove its MCP client entry or set host control false. Release viewer reservations before switching to an older app that does not participate in coordination.
+
+## Persistent Simulator worker
+
+Simulator MCP operations reuse a Python worker and IDB gRPC client over an SSH stdio channel. Screenshots, AX reads and hit tests, taps, swipes and selected-field text setting call the bundled IDB API directly. Other operations keep their existing implementation. There is no new listening port, package download, or Mac login service. The connection stays warm for five idle minutes and closes when the MCP client disconnects. Initial runtime verification and worker imports still make the first call slower.
+
+The worker serializes operations, bounds request/response sizes, resets outcome state for each request, and retains device locking, viewer handoff, hit testing, redaction and deadlines. A timeout or broken channel never replays an action. A subsequent independent request may open a fresh channel. Physical iPhones and the long-poll viewer watcher retain their existing command path.
+
+Run the read-only paired benchmark against an already-running Simulator, keeping its screen unchanged:
+
+```powershell
+node scripts/benchmark-simulator.cjs CONFIGURED_HOST_ID SIMULATOR_UUID
+```
+
+It alternates the original CLI path and the worker, checks accessibility-content parity, and writes timing results to `release/performance/worker-benchmark.json`. See [the worker performance report](worker-performance-2026-10-29.md) for the measured comparison and limits.
 
 ## Verification
 

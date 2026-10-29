@@ -25,7 +25,7 @@ async function harness() {
   const document={getElementById:id=>entries.get(id),createElement:tag=>new Element(tag),createTextNode:text=>({textContent:text}),querySelector:()=>main,querySelectorAll:()=>[],addEventListener(){},hasFocus:()=>false,activeElement:null};
   const info={devices:[{udid:a,name:'iPhone A',kind:'simulator',state:'Booted',runtime:'iOS-26-3'},{udid:b,name:'iPhone B',kind:'simulator',state:'Booted',runtime:'iOS-26-3'},{udid:c,name:'iPhone C',kind:'simulator',state:'Shutdown',runtime:'iOS-26-3'}]};
   let progress,menuAction,viewerMode;
-  const mirror={profiles:async()=>[],importHosts:async()=>[{kind:'mcp',hostId:'test',name:'Mac',target:'mac.local'}],setup:async()=>structuredClone(info),devices:async()=>{calls.devices++;return structuredClone(info)},panel:async()=>{},onPanel(){},onAction(fn){menuAction=fn},onViewerMode(fn){viewerMode=fn},onProgress:fn=>{progress=fn},
+  const mirror={profiles:async()=>[],importHosts:async()=>[{kind:'mcp',hostId:'test',name:'Mac',target:'mac.local'}],setup:async()=>structuredClone(info),devices:async()=>{calls.devices++;return structuredClone(info)},panel:async()=>{},onPanel(){},onAgentView(fn){mirror.agentView=fn;},onAction(fn){menuAction=fn},onViewerMode(fn){viewerMode=fn},onProgress:fn=>{progress=fn},
     start:async id=>{calls.start.push(id);if(mirror.failStart)throw Error('Boot failed');info.devices.find(d=>d.udid===id).state='Booted';},
     shutdown:async id=>{calls.shutdown.push(id);info.devices.find(d=>d.udid===id).state='Shutdown';},disconnect:async()=>{calls.disconnect++;},stop:async()=>{},control:async()=>{},screenshot:async()=>{},chooseKey:async()=>''};
   vm.runInNewContext(fs.readFileSync('app/renderer.js','utf8'),{document,window:{mirror},setInterval:fn=>intervals.push(fn)});

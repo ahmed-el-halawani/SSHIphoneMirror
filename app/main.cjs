@@ -1,4 +1,4 @@
-const { app, BrowserWindow, WebContentsView, ipcMain, dialog, protocol, net, safeStorage, session, Menu, screen, clipboard } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, dialog, protocol, net, safeStorage, session, Menu, screen, clipboard, Tray } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -10,6 +10,12 @@ const { reserveViewer } = require('./automation/viewer-reservation.cjs');
 const { execute } = require('./automation/command-executor.cjs');
 const { ensureSimulatorRuntime } = require('./automation/simulator-runtime.cjs');
 const clientSetup = require('./mcp/client-setup.cjs');
+const profiles = require('./automation/connection-profiles.cjs');
+const { serveDesktop } = require('./automation/desktop-viewer.cjs');
+let tray, quitting = false, traySuspended = false, closingView = null, agentTarget = null, closeDesktop;
+const primaryInstance = app.requestSingleInstanceLock();
+if (!primaryInstance) app.quit();
+app.on('second-instance', () => { if (window) restoreWindow(); });
 let readOnlyViewer = process.env.IPHONE_MIRROR_VIEWER_READ_ONLY === '1';
 let releaseViewer;
 let viewerDeviceId='',modeTask=null,noticeOpen=false;
@@ -43,6 +49,7 @@ function savedFor(p) {
 }
 async function runner() {
   if (!active) throw Error('Connect to a Mac first.');
+  if (active.automation) return profiles.connectHost(profiles.loadConfig(), active.hostId);
   return connections.connect(active.profile, active.password, async fingerprint => {
     const previous = savedFor(active.profile);
     if (previous?.fingerprint) {
@@ -207,6 +214,7 @@ function handle(name, fn, exclusive = true) {
 }
 
 app.whenReady().then(async () => {
+  if (!primaryInstance) return;
   try { store = JSON.parse(fs.readFileSync(storePath(), 'utf8')); if (!Array.isArray(store.profiles)) throw Error('Invalid connections file'); }
   catch (e) { if (e.code !== 'ENOENT') { storeWritable = false; store = { profiles: [] }; dialog.showErrorBox('Saved connections could not be loaded', 'Your connections file could not be read. It will not be overwritten. Restore connections.json before saving new profiles.'); } }
   readOnlyViewer = readOnlyViewer || store.watchAgent === true;
@@ -233,7 +241,29 @@ app.whenReady().then(async () => {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, target) => { if (target !== 'mirror://app/index.html') event.preventDefault(); });
   window.on('resize', layoutViewer);
+  window.on('close', event => {
+    if (quitting) return;
+    event.preventDefault();
+    traySuspended = true;
+    window.hide();
+    closingView = (async () => {
+      const pending = pendingStart;
+      pending?.controller.abort();
+      if (pending) await pending.done;
+      try { await hideViewer(); } finally { await closeReal(); }
+      window.webContents.send('mirror:agent-view', { disconnected: true });
+      log('Viewer disconnected to tray. Agent automation continues.');
+    })().catch(error => log(error.message)).finally(() => { closingView = null; });
+  });
   window.on('closed', () => { window = null; });
+  tray = new Tray(path.join(__dirname, 'assets', 'icon.ico'));
+  tray.setToolTip('iPhone Mirror — agent automation continues in the tray');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Show iPhone Mirror', click: () => restoreWindow() },
+    { type: 'separator' },
+    { label: 'Quit iPhone Mirror', click: () => app.quit() }
+  ]));
+  tray.on('double-click', () => restoreWindow());
 
   handle('profiles', () => store.profiles.map(publicProfile), false);
   const automationFile=()=>process.env.IPHONE_MIRROR_CONFIG || path.join(require('node:os').homedir(),'.iphone-mirror','automation.json');
@@ -348,7 +378,7 @@ app.whenReady().then(async () => {
     log('Mac ready. Choose a real iPhone or simulator.');
     return info;
   });
-  handle('start', async udid => {
+  async function startDevice(udid) {
     const controller=new AbortController();
     const pending={controller,physical:typeof udid==='string'&&udid.startsWith('real:')};
     pending.done=new Promise(resolve=>{pending.resolve=resolve;});pendingStart=pending;
@@ -387,7 +417,8 @@ app.whenReady().then(async () => {
     return { connected: true };
     } catch(e) {await hideViewer();throw e;}
     finally {if(pendingStart===pending)pendingStart=null;pending.resolve();}
-  });
+  }
+  handle('start', startDevice);
   handle('cancel-start', async()=>{
     const pending=pendingStart;
     if(!pending)return;
@@ -409,9 +440,66 @@ app.whenReady().then(async () => {
   await window.loadURL('mirror://app/index.html');
   window.webContents.send('mirror:viewer-mode',readOnlyViewer);
   window.show();
+  closeDesktop = await serveDesktop(watchAgentDevice);
+
+  async function watchAgentDevice(request) {
+    if (closingView) await closingView;
+    if (request.hostId && (request.deviceId || agentTarget?.hostId !== request.hostId)) agentTarget = { ...request };
+    if (traySuspended) return { hidden: true };
+    if (window.isMinimized()) window.restore();
+    window.show();
+    if (!request.hostId) return {};
+    const idleDeadline = Date.now() + 30000;
+    while (busy && Date.now() < idleDeadline) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+      if (traySuspended) return { hidden: true };
+    }
+    if (busy) throw Error('The desktop is changing devices. Wait for it to finish.');
+    busy = true;
+    try {
+      const config = profiles.loadConfig();
+      const host = config.hosts.find(h => h.id === request.hostId) || (config.discoverManager && (await profiles.listHosts(config)).find(h => h.hostId === request.hostId));
+      if (!host) throw Error('This Mac is not enrolled in the local automation configuration.');
+      if (!readOnlyViewer) await setViewerMode(true);
+      let info;
+      if (!active?.automation || active.hostId !== request.hostId) {
+        await hideViewer(); await closeReal();
+        active = { automation: true, hostId: request.hostId, profile: host };
+      }
+      if (request.deviceId && viewerDeviceId === request.deviceId && viewer) return {};
+      if (!request.deviceId && viewer) return {};
+      info = await usingRunner(async conn => resultJSON(await conn.run(remote.probe)));
+      const waitingForSession = request.action === 'start_session' && request.phase === 'before';
+      if (waitingForSession) { await hideViewer(); await closeReal(); log('Waiting for the agent to start the iPhone session…'); }
+      window.webContents.send('mirror:agent-view', { devices: info.devices, deviceId: request.deviceId || '', connected: false, connecting: !!request.deviceId });
+      if (request.deviceId && !waitingForSession && !traySuspended) {
+        if (!request.deviceId.startsWith('real:')) await usingRunner(conn => conn.run(remote.installScript(), 600000));
+        await startDevice(request.deviceId);
+        if (traySuspended) { await hideViewer(); await closeReal(); return { hidden: true }; }
+        panelOpen = false; layoutViewer();
+        window.webContents.send('mirror:agent-view', { devices: info.devices, deviceId: request.deviceId, connected: true });
+      }
+      return {};
+    } catch (error) {
+      if (traySuspended) return { hidden: true };
+      window.webContents.send('mirror:agent-view', { disconnected: true });
+      log(error.message);
+      throw error;
+    } finally { busy = false; }
+  }
+  restoreWindow = async () => {
+    traySuspended = false;
+    if (window.isMinimized()) window.restore();
+    window.show(); window.focus();
+    try { if (agentTarget) await watchAgentDevice({ ...agentTarget, phase: 'after' }); }
+    catch (error) { log(error.message); }
+  };
 });
+let restoreWindow = () => { if (window) { window.show(); window.focus(); } };
 app.on('window-all-closed', () => app.quit());
 app.on('before-quit',event=>{
+  quitting = true;
+  closeDesktop?.(); closeDesktop = null;
   if(!realSession&&!pendingStart&&!releaseViewer)return;
   event.preventDefault();
   const pending=pendingStart;pending?.controller.abort();

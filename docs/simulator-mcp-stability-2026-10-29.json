@@ -1,0 +1,3308 @@
+{
+  "startedAt": "2026-10-29T19:48:30.847Z",
+  "test": "10-minute registered iPhone Mirror MCP read stability",
+  "device": "iPhone 17 simulator",
+  "hostId": "3ff49720-2b02-42f9-9eca-d7230ab1af45",
+  "deviceId": "3F1BDF2E-804A-47CD-AACC-55CABC26703E",
+  "timeoutMs": 15000,
+  "intervalMs": 5000,
+  "plannedDurationMs": 600000,
+  "samples": [
+    {
+      "round": 0,
+      "action": "screenshot",
+      "offsetMs": 0,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 419,
+      "validPng": true,
+      "imageBase64Length": 2119608,
+      "changedFromPrevious": null,
+      "wallDurationMs": 473
+    },
+    {
+      "round": 0,
+      "action": "get_ui_tree",
+      "offsetMs": 473,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 308,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 338
+    },
+    {
+      "round": 1,
+      "action": "screenshot",
+      "offsetMs": 5009,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 319,
+      "validPng": true,
+      "imageBase64Length": 2119608,
+      "changedFromPrevious": false,
+      "wallDurationMs": 375
+    },
+    {
+      "round": 1,
+      "action": "get_ui_tree",
+      "offsetMs": 5384,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 212,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 233
+    },
+    {
+      "round": 2,
+      "action": "screenshot",
+      "offsetMs": 10006,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 333,
+      "validPng": true,
+      "imageBase64Length": 2119608,
+      "changedFromPrevious": false,
+      "wallDurationMs": 383
+    },
+    {
+      "round": 2,
+      "action": "get_ui_tree",
+      "offsetMs": 10389,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 210,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 232
+    },
+    {
+      "round": 3,
+      "action": "screenshot",
+      "offsetMs": 15004,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 296,
+      "validPng": true,
+      "imageBase64Length": 2119608,
+      "changedFromPrevious": false,
+      "wallDurationMs": 352
+    },
+    {
+      "round": 3,
+      "action": "get_ui_tree",
+      "offsetMs": 15356,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 233,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 255
+    },
+    {
+      "round": 4,
+      "action": "screenshot",
+      "offsetMs": 20005,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 331,
+      "validPng": true,
+      "imageBase64Length": 2119608,
+      "changedFromPrevious": false,
+      "wallDurationMs": 385
+    },
+    {
+      "round": 4,
+      "action": "get_ui_tree",
+      "offsetMs": 20390,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 226,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 249
+    },
+    {
+      "round": 5,
+      "action": "screenshot",
+      "offsetMs": 25010,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 335,
+      "validPng": true,
+      "imageBase64Length": 2119608,
+      "changedFromPrevious": false,
+      "wallDurationMs": 386
+    },
+    {
+      "round": 5,
+      "action": "get_ui_tree",
+      "offsetMs": 25396,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 235,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 259
+    },
+    {
+      "round": 6,
+      "action": "screenshot",
+      "offsetMs": 30001,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 311,
+      "validPng": true,
+      "imageBase64Length": 2119456,
+      "changedFromPrevious": true,
+      "wallDurationMs": 387
+    },
+    {
+      "round": 6,
+      "action": "get_ui_tree",
+      "offsetMs": 30388,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 212,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 230
+    },
+    {
+      "round": 7,
+      "action": "screenshot",
+      "offsetMs": 35013,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 331,
+      "validPng": true,
+      "imageBase64Length": 2119456,
+      "changedFromPrevious": false,
+      "wallDurationMs": 385
+    },
+    {
+      "round": 7,
+      "action": "get_ui_tree",
+      "offsetMs": 35398,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 215,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 244
+    },
+    {
+      "round": 8,
+      "action": "screenshot",
+      "offsetMs": 40009,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 348,
+      "validPng": true,
+      "imageBase64Length": 2119456,
+      "changedFromPrevious": false,
+      "wallDurationMs": 394
+    },
+    {
+      "round": 8,
+      "action": "get_ui_tree",
+      "offsetMs": 40403,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 211,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 236
+    },
+    {
+      "round": 9,
+      "action": "screenshot",
+      "offsetMs": 45010,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 350,
+      "validPng": true,
+      "imageBase64Length": 2119456,
+      "changedFromPrevious": false,
+      "wallDurationMs": 398
+    },
+    {
+      "round": 9,
+      "action": "get_ui_tree",
+      "offsetMs": 45408,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 218,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 243
+    },
+    {
+      "round": 10,
+      "action": "screenshot",
+      "offsetMs": 50015,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 373,
+      "validPng": true,
+      "imageBase64Length": 2119456,
+      "changedFromPrevious": false,
+      "wallDurationMs": 424
+    },
+    {
+      "round": 10,
+      "action": "get_ui_tree",
+      "offsetMs": 50439,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 217,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 239
+    },
+    {
+      "round": 11,
+      "action": "screenshot",
+      "offsetMs": 55012,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 319,
+      "validPng": true,
+      "imageBase64Length": 2119456,
+      "changedFromPrevious": false,
+      "wallDurationMs": 366
+    },
+    {
+      "round": 11,
+      "action": "get_ui_tree",
+      "offsetMs": 55379,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 258,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 278
+    },
+    {
+      "round": 12,
+      "action": "screenshot",
+      "offsetMs": 60004,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 327,
+      "validPng": true,
+      "imageBase64Length": 2119456,
+      "changedFromPrevious": false,
+      "wallDurationMs": 382
+    },
+    {
+      "round": 12,
+      "action": "get_ui_tree",
+      "offsetMs": 60386,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 229,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 256
+    },
+    {
+      "round": 13,
+      "action": "screenshot",
+      "offsetMs": 65012,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 314,
+      "validPng": true,
+      "imageBase64Length": 2119456,
+      "changedFromPrevious": false,
+      "wallDurationMs": 365
+    },
+    {
+      "round": 13,
+      "action": "get_ui_tree",
+      "offsetMs": 65377,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 224,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 250
+    },
+    {
+      "round": 14,
+      "action": "screenshot",
+      "offsetMs": 70010,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 319,
+      "validPng": true,
+      "imageBase64Length": 2119456,
+      "changedFromPrevious": false,
+      "wallDurationMs": 370
+    },
+    {
+      "round": 14,
+      "action": "get_ui_tree",
+      "offsetMs": 70380,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 225,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 245
+    },
+    {
+      "round": 15,
+      "action": "screenshot",
+      "offsetMs": 75012,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 318,
+      "validPng": true,
+      "imageBase64Length": 2119456,
+      "changedFromPrevious": false,
+      "wallDurationMs": 368
+    },
+    {
+      "round": 15,
+      "action": "get_ui_tree",
+      "offsetMs": 75380,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 304,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 333
+    },
+    {
+      "round": 16,
+      "action": "screenshot",
+      "offsetMs": 80013,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 291,
+      "validPng": true,
+      "imageBase64Length": 2119456,
+      "changedFromPrevious": false,
+      "wallDurationMs": 339
+    },
+    {
+      "round": 16,
+      "action": "get_ui_tree",
+      "offsetMs": 80352,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 250,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 273
+    },
+    {
+      "round": 17,
+      "action": "screenshot",
+      "offsetMs": 85008,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 298,
+      "validPng": true,
+      "imageBase64Length": 2119456,
+      "changedFromPrevious": false,
+      "wallDurationMs": 360
+    },
+    {
+      "round": 17,
+      "action": "get_ui_tree",
+      "offsetMs": 85368,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 229,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 251
+    },
+    {
+      "round": 18,
+      "action": "screenshot",
+      "offsetMs": 90002,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 329,
+      "validPng": true,
+      "imageBase64Length": 2118808,
+      "changedFromPrevious": true,
+      "wallDurationMs": 382
+    },
+    {
+      "round": 18,
+      "action": "get_ui_tree",
+      "offsetMs": 90384,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 211,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 232
+    },
+    {
+      "round": 19,
+      "action": "screenshot",
+      "offsetMs": 95002,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 302,
+      "validPng": true,
+      "imageBase64Length": 2118808,
+      "changedFromPrevious": false,
+      "wallDurationMs": 351
+    },
+    {
+      "round": 19,
+      "action": "get_ui_tree",
+      "offsetMs": 95353,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 204,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 226
+    },
+    {
+      "round": 20,
+      "action": "screenshot",
+      "offsetMs": 100007,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 297,
+      "validPng": true,
+      "imageBase64Length": 2118808,
+      "changedFromPrevious": false,
+      "wallDurationMs": 347
+    },
+    {
+      "round": 20,
+      "action": "get_ui_tree",
+      "offsetMs": 100354,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 229,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 252
+    },
+    {
+      "round": 21,
+      "action": "screenshot",
+      "offsetMs": 105005,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 293,
+      "validPng": true,
+      "imageBase64Length": 2118808,
+      "changedFromPrevious": false,
+      "wallDurationMs": 343
+    },
+    {
+      "round": 21,
+      "action": "get_ui_tree",
+      "offsetMs": 105348,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 209,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 229
+    },
+    {
+      "round": 22,
+      "action": "screenshot",
+      "offsetMs": 110006,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 282,
+      "validPng": true,
+      "imageBase64Length": 2118808,
+      "changedFromPrevious": false,
+      "wallDurationMs": 338
+    },
+    {
+      "round": 22,
+      "action": "get_ui_tree",
+      "offsetMs": 110344,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 259,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 282
+    },
+    {
+      "round": 23,
+      "action": "screenshot",
+      "offsetMs": 115002,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 304,
+      "validPng": true,
+      "imageBase64Length": 2118808,
+      "changedFromPrevious": false,
+      "wallDurationMs": 354
+    },
+    {
+      "round": 23,
+      "action": "get_ui_tree",
+      "offsetMs": 115356,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 229,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 253
+    },
+    {
+      "round": 24,
+      "action": "screenshot",
+      "offsetMs": 120010,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 293,
+      "validPng": true,
+      "imageBase64Length": 2118808,
+      "changedFromPrevious": false,
+      "wallDurationMs": 350
+    },
+    {
+      "round": 24,
+      "action": "get_ui_tree",
+      "offsetMs": 120360,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 222,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 243
+    },
+    {
+      "round": 25,
+      "action": "screenshot",
+      "offsetMs": 125008,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 285,
+      "validPng": true,
+      "imageBase64Length": 2118808,
+      "changedFromPrevious": false,
+      "wallDurationMs": 336
+    },
+    {
+      "round": 25,
+      "action": "get_ui_tree",
+      "offsetMs": 125344,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 230,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 254
+    },
+    {
+      "round": 26,
+      "action": "screenshot",
+      "offsetMs": 130013,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 281,
+      "validPng": true,
+      "imageBase64Length": 2118808,
+      "changedFromPrevious": false,
+      "wallDurationMs": 332
+    },
+    {
+      "round": 26,
+      "action": "get_ui_tree",
+      "offsetMs": 130346,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 234,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 255
+    },
+    {
+      "round": 27,
+      "action": "screenshot",
+      "offsetMs": 135011,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 300,
+      "validPng": true,
+      "imageBase64Length": 2118808,
+      "changedFromPrevious": false,
+      "wallDurationMs": 353
+    },
+    {
+      "round": 27,
+      "action": "get_ui_tree",
+      "offsetMs": 135364,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 234,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 255
+    },
+    {
+      "round": 28,
+      "action": "screenshot",
+      "offsetMs": 140004,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 310,
+      "validPng": true,
+      "imageBase64Length": 2118808,
+      "changedFromPrevious": false,
+      "wallDurationMs": 362
+    },
+    {
+      "round": 28,
+      "action": "get_ui_tree",
+      "offsetMs": 140367,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 233,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 255
+    },
+    {
+      "round": 29,
+      "action": "screenshot",
+      "offsetMs": 145001,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 295,
+      "validPng": true,
+      "imageBase64Length": 2118808,
+      "changedFromPrevious": false,
+      "wallDurationMs": 347
+    },
+    {
+      "round": 29,
+      "action": "get_ui_tree",
+      "offsetMs": 145349,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 247,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 268
+    },
+    {
+      "round": 30,
+      "action": "screenshot",
+      "offsetMs": 150015,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 291,
+      "validPng": true,
+      "imageBase64Length": 2118640,
+      "changedFromPrevious": true,
+      "wallDurationMs": 343
+    },
+    {
+      "round": 30,
+      "action": "get_ui_tree",
+      "offsetMs": 150358,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 237,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 259
+    },
+    {
+      "round": 31,
+      "action": "screenshot",
+      "offsetMs": 155004,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 277,
+      "validPng": true,
+      "imageBase64Length": 2118640,
+      "changedFromPrevious": false,
+      "wallDurationMs": 331
+    },
+    {
+      "round": 31,
+      "action": "get_ui_tree",
+      "offsetMs": 155335,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 228,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 259
+    },
+    {
+      "round": 32,
+      "action": "screenshot",
+      "offsetMs": 160003,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 313,
+      "validPng": true,
+      "imageBase64Length": 2118640,
+      "changedFromPrevious": false,
+      "wallDurationMs": 366
+    },
+    {
+      "round": 32,
+      "action": "get_ui_tree",
+      "offsetMs": 160370,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 209,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 232
+    },
+    {
+      "round": 33,
+      "action": "screenshot",
+      "offsetMs": 165013,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 297,
+      "validPng": true,
+      "imageBase64Length": 2118640,
+      "changedFromPrevious": false,
+      "wallDurationMs": 348
+    },
+    {
+      "round": 33,
+      "action": "get_ui_tree",
+      "offsetMs": 165361,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 215,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 236
+    },
+    {
+      "round": 34,
+      "action": "screenshot",
+      "offsetMs": 170012,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 272,
+      "validPng": true,
+      "imageBase64Length": 2118640,
+      "changedFromPrevious": false,
+      "wallDurationMs": 322
+    },
+    {
+      "round": 34,
+      "action": "get_ui_tree",
+      "offsetMs": 170335,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 232,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 253
+    },
+    {
+      "round": 35,
+      "action": "screenshot",
+      "offsetMs": 175010,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 302,
+      "validPng": true,
+      "imageBase64Length": 2118640,
+      "changedFromPrevious": false,
+      "wallDurationMs": 353
+    },
+    {
+      "round": 35,
+      "action": "get_ui_tree",
+      "offsetMs": 175363,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 228,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 249
+    },
+    {
+      "round": 36,
+      "action": "screenshot",
+      "offsetMs": 180011,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 290,
+      "validPng": true,
+      "imageBase64Length": 2118640,
+      "changedFromPrevious": false,
+      "wallDurationMs": 339
+    },
+    {
+      "round": 36,
+      "action": "get_ui_tree",
+      "offsetMs": 180350,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 210,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 240
+    },
+    {
+      "round": 37,
+      "action": "screenshot",
+      "offsetMs": 185005,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 306,
+      "validPng": true,
+      "imageBase64Length": 2118640,
+      "changedFromPrevious": false,
+      "wallDurationMs": 358
+    },
+    {
+      "round": 37,
+      "action": "get_ui_tree",
+      "offsetMs": 185363,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 237,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 258
+    },
+    {
+      "round": 38,
+      "action": "screenshot",
+      "offsetMs": 190016,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 258,
+      "validPng": true,
+      "imageBase64Length": 2118640,
+      "changedFromPrevious": false,
+      "wallDurationMs": 310
+    },
+    {
+      "round": 38,
+      "action": "get_ui_tree",
+      "offsetMs": 190326,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 249,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 271
+    },
+    {
+      "round": 39,
+      "action": "screenshot",
+      "offsetMs": 195008,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 316,
+      "validPng": true,
+      "imageBase64Length": 2118640,
+      "changedFromPrevious": false,
+      "wallDurationMs": 369
+    },
+    {
+      "round": 39,
+      "action": "get_ui_tree",
+      "offsetMs": 195377,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 229,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 251
+    },
+    {
+      "round": 40,
+      "action": "screenshot",
+      "offsetMs": 200016,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 340,
+      "validPng": true,
+      "imageBase64Length": 2118640,
+      "changedFromPrevious": false,
+      "wallDurationMs": 398
+    },
+    {
+      "round": 40,
+      "action": "get_ui_tree",
+      "offsetMs": 200414,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 250,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 275
+    },
+    {
+      "round": 41,
+      "action": "screenshot",
+      "offsetMs": 205007,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 263,
+      "validPng": true,
+      "imageBase64Length": 2118640,
+      "changedFromPrevious": false,
+      "wallDurationMs": 314
+    },
+    {
+      "round": 41,
+      "action": "get_ui_tree",
+      "offsetMs": 205321,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 247,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 268
+    },
+    {
+      "round": 42,
+      "action": "screenshot",
+      "offsetMs": 210004,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 289,
+      "validPng": true,
+      "imageBase64Length": 2119576,
+      "changedFromPrevious": true,
+      "wallDurationMs": 338
+    },
+    {
+      "round": 42,
+      "action": "get_ui_tree",
+      "offsetMs": 210342,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 213,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 233
+    },
+    {
+      "round": 43,
+      "action": "screenshot",
+      "offsetMs": 215014,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 270,
+      "validPng": true,
+      "imageBase64Length": 2119576,
+      "changedFromPrevious": false,
+      "wallDurationMs": 330
+    },
+    {
+      "round": 43,
+      "action": "get_ui_tree",
+      "offsetMs": 215344,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 210,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 233
+    },
+    {
+      "round": 44,
+      "action": "screenshot",
+      "offsetMs": 220007,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 280,
+      "validPng": true,
+      "imageBase64Length": 2119576,
+      "changedFromPrevious": false,
+      "wallDurationMs": 338
+    },
+    {
+      "round": 44,
+      "action": "get_ui_tree",
+      "offsetMs": 220346,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 209,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 227
+    },
+    {
+      "round": 45,
+      "action": "screenshot",
+      "offsetMs": 225006,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 296,
+      "validPng": true,
+      "imageBase64Length": 2119576,
+      "changedFromPrevious": false,
+      "wallDurationMs": 346
+    },
+    {
+      "round": 45,
+      "action": "get_ui_tree",
+      "offsetMs": 225352,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 214,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 234
+    },
+    {
+      "round": 46,
+      "action": "screenshot",
+      "offsetMs": 230011,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 336,
+      "validPng": true,
+      "imageBase64Length": 2119576,
+      "changedFromPrevious": false,
+      "wallDurationMs": 386
+    },
+    {
+      "round": 46,
+      "action": "get_ui_tree",
+      "offsetMs": 230397,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 263,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 284
+    },
+    {
+      "round": 47,
+      "action": "screenshot",
+      "offsetMs": 235006,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 416,
+      "validPng": true,
+      "imageBase64Length": 2119576,
+      "changedFromPrevious": false,
+      "wallDurationMs": 467
+    },
+    {
+      "round": 47,
+      "action": "get_ui_tree",
+      "offsetMs": 235474,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 326,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 345
+    },
+    {
+      "round": 48,
+      "action": "screenshot",
+      "offsetMs": 240005,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 283,
+      "validPng": true,
+      "imageBase64Length": 2119576,
+      "changedFromPrevious": false,
+      "wallDurationMs": 335
+    },
+    {
+      "round": 48,
+      "action": "get_ui_tree",
+      "offsetMs": 240341,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 228,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 252
+    },
+    {
+      "round": 49,
+      "action": "screenshot",
+      "offsetMs": 245003,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 308,
+      "validPng": true,
+      "imageBase64Length": 2119576,
+      "changedFromPrevious": false,
+      "wallDurationMs": 358
+    },
+    {
+      "round": 49,
+      "action": "get_ui_tree",
+      "offsetMs": 245361,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 316,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 349
+    },
+    {
+      "round": 50,
+      "action": "screenshot",
+      "offsetMs": 250012,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 327,
+      "validPng": true,
+      "imageBase64Length": 2119576,
+      "changedFromPrevious": false,
+      "wallDurationMs": 377
+    },
+    {
+      "round": 50,
+      "action": "get_ui_tree",
+      "offsetMs": 250389,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 223,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 246
+    },
+    {
+      "round": 51,
+      "action": "screenshot",
+      "offsetMs": 255003,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 267,
+      "validPng": true,
+      "imageBase64Length": 2119576,
+      "changedFromPrevious": false,
+      "wallDurationMs": 326
+    },
+    {
+      "round": 51,
+      "action": "get_ui_tree",
+      "offsetMs": 255329,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 237,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 260
+    },
+    {
+      "round": 52,
+      "action": "screenshot",
+      "offsetMs": 260014,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 266,
+      "validPng": true,
+      "imageBase64Length": 2119576,
+      "changedFromPrevious": false,
+      "wallDurationMs": 377
+    },
+    {
+      "round": 52,
+      "action": "get_ui_tree",
+      "offsetMs": 260391,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 229,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 247
+    },
+    {
+      "round": 53,
+      "action": "screenshot",
+      "offsetMs": 265013,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 318,
+      "validPng": true,
+      "imageBase64Length": 2119576,
+      "changedFromPrevious": false,
+      "wallDurationMs": 371
+    },
+    {
+      "round": 53,
+      "action": "get_ui_tree",
+      "offsetMs": 265385,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 237,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 257
+    },
+    {
+      "round": 54,
+      "action": "screenshot",
+      "offsetMs": 270012,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 288,
+      "validPng": true,
+      "imageBase64Length": 2119888,
+      "changedFromPrevious": true,
+      "wallDurationMs": 336
+    },
+    {
+      "round": 54,
+      "action": "get_ui_tree",
+      "offsetMs": 270349,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 306,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 323
+    },
+    {
+      "round": 55,
+      "action": "screenshot",
+      "offsetMs": 275009,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 291,
+      "validPng": true,
+      "imageBase64Length": 2119888,
+      "changedFromPrevious": false,
+      "wallDurationMs": 342
+    },
+    {
+      "round": 55,
+      "action": "get_ui_tree",
+      "offsetMs": 275351,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 218,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 242
+    },
+    {
+      "round": 56,
+      "action": "screenshot",
+      "offsetMs": 280012,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 288,
+      "validPng": true,
+      "imageBase64Length": 2119888,
+      "changedFromPrevious": false,
+      "wallDurationMs": 338
+    },
+    {
+      "round": 56,
+      "action": "get_ui_tree",
+      "offsetMs": 280350,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 230,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 256
+    },
+    {
+      "round": 57,
+      "action": "screenshot",
+      "offsetMs": 285010,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 250,
+      "validPng": true,
+      "imageBase64Length": 2119888,
+      "changedFromPrevious": false,
+      "wallDurationMs": 313
+    },
+    {
+      "round": 57,
+      "action": "get_ui_tree",
+      "offsetMs": 285324,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 224,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 244
+    },
+    {
+      "round": 58,
+      "action": "screenshot",
+      "offsetMs": 290015,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 268,
+      "validPng": true,
+      "imageBase64Length": 2119888,
+      "changedFromPrevious": false,
+      "wallDurationMs": 319
+    },
+    {
+      "round": 58,
+      "action": "get_ui_tree",
+      "offsetMs": 290335,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 207,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 228
+    },
+    {
+      "round": 59,
+      "action": "screenshot",
+      "offsetMs": 295000,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 277,
+      "validPng": true,
+      "imageBase64Length": 2119888,
+      "changedFromPrevious": false,
+      "wallDurationMs": 331
+    },
+    {
+      "round": 59,
+      "action": "get_ui_tree",
+      "offsetMs": 295331,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 229,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 251
+    },
+    {
+      "round": 60,
+      "action": "screenshot",
+      "offsetMs": 300002,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 260,
+      "validPng": true,
+      "imageBase64Length": 2119888,
+      "changedFromPrevious": false,
+      "wallDurationMs": 308
+    },
+    {
+      "round": 60,
+      "action": "get_ui_tree",
+      "offsetMs": 300310,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 231,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 254
+    },
+    {
+      "round": 61,
+      "action": "screenshot",
+      "offsetMs": 305014,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 285,
+      "validPng": true,
+      "imageBase64Length": 2119888,
+      "changedFromPrevious": false,
+      "wallDurationMs": 334
+    },
+    {
+      "round": 61,
+      "action": "get_ui_tree",
+      "offsetMs": 305349,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 207,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 232
+    },
+    {
+      "round": 62,
+      "action": "screenshot",
+      "offsetMs": 310012,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 284,
+      "validPng": true,
+      "imageBase64Length": 2119888,
+      "changedFromPrevious": false,
+      "wallDurationMs": 343
+    },
+    {
+      "round": 62,
+      "action": "get_ui_tree",
+      "offsetMs": 310356,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 205,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 228
+    },
+    {
+      "round": 63,
+      "action": "screenshot",
+      "offsetMs": 315002,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 261,
+      "validPng": true,
+      "imageBase64Length": 2119888,
+      "changedFromPrevious": false,
+      "wallDurationMs": 311
+    },
+    {
+      "round": 63,
+      "action": "get_ui_tree",
+      "offsetMs": 315313,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 227,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 269
+    },
+    {
+      "round": 64,
+      "action": "screenshot",
+      "offsetMs": 320016,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 264,
+      "validPng": true,
+      "imageBase64Length": 2119888,
+      "changedFromPrevious": false,
+      "wallDurationMs": 319
+    },
+    {
+      "round": 64,
+      "action": "get_ui_tree",
+      "offsetMs": 320335,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 205,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 228
+    },
+    {
+      "round": 65,
+      "action": "screenshot",
+      "offsetMs": 325011,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 269,
+      "validPng": true,
+      "imageBase64Length": 2119888,
+      "changedFromPrevious": false,
+      "wallDurationMs": 327
+    },
+    {
+      "round": 65,
+      "action": "get_ui_tree",
+      "offsetMs": 325339,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 209,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 229
+    },
+    {
+      "round": 66,
+      "action": "screenshot",
+      "offsetMs": 330011,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 283,
+      "validPng": true,
+      "imageBase64Length": 2119248,
+      "changedFromPrevious": true,
+      "wallDurationMs": 331
+    },
+    {
+      "round": 66,
+      "action": "get_ui_tree",
+      "offsetMs": 330343,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 260,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 285
+    },
+    {
+      "round": 67,
+      "action": "screenshot",
+      "offsetMs": 335003,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 310,
+      "validPng": true,
+      "imageBase64Length": 2119248,
+      "changedFromPrevious": false,
+      "wallDurationMs": 373
+    },
+    {
+      "round": 67,
+      "action": "get_ui_tree",
+      "offsetMs": 335377,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 222,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 245
+    },
+    {
+      "round": 68,
+      "action": "screenshot",
+      "offsetMs": 340014,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 270,
+      "validPng": true,
+      "imageBase64Length": 2119248,
+      "changedFromPrevious": false,
+      "wallDurationMs": 324
+    },
+    {
+      "round": 68,
+      "action": "get_ui_tree",
+      "offsetMs": 340339,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 259,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 276
+    },
+    {
+      "round": 69,
+      "action": "screenshot",
+      "offsetMs": 345005,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 440,
+      "validPng": true,
+      "imageBase64Length": 2119248,
+      "changedFromPrevious": false,
+      "wallDurationMs": 498
+    },
+    {
+      "round": 69,
+      "action": "get_ui_tree",
+      "offsetMs": 345503,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 258,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 283
+    },
+    {
+      "round": 70,
+      "action": "screenshot",
+      "offsetMs": 350016,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 259,
+      "validPng": true,
+      "imageBase64Length": 2119248,
+      "changedFromPrevious": false,
+      "wallDurationMs": 309
+    },
+    {
+      "round": 70,
+      "action": "get_ui_tree",
+      "offsetMs": 350326,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 213,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 237
+    },
+    {
+      "round": 71,
+      "action": "screenshot",
+      "offsetMs": 355014,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 271,
+      "validPng": true,
+      "imageBase64Length": 2119248,
+      "changedFromPrevious": false,
+      "wallDurationMs": 326
+    },
+    {
+      "round": 71,
+      "action": "get_ui_tree",
+      "offsetMs": 355340,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 258,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 286
+    },
+    {
+      "round": 72,
+      "action": "screenshot",
+      "offsetMs": 360004,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 274,
+      "validPng": true,
+      "imageBase64Length": 2119248,
+      "changedFromPrevious": false,
+      "wallDurationMs": 326
+    },
+    {
+      "round": 72,
+      "action": "get_ui_tree",
+      "offsetMs": 360331,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 212,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 233
+    },
+    {
+      "round": 73,
+      "action": "screenshot",
+      "offsetMs": 365001,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 289,
+      "validPng": true,
+      "imageBase64Length": 2119248,
+      "changedFromPrevious": false,
+      "wallDurationMs": 347
+    },
+    {
+      "round": 73,
+      "action": "get_ui_tree",
+      "offsetMs": 365348,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 233,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 260
+    },
+    {
+      "round": 74,
+      "action": "screenshot",
+      "offsetMs": 370015,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 294,
+      "validPng": true,
+      "imageBase64Length": 2119248,
+      "changedFromPrevious": false,
+      "wallDurationMs": 345
+    },
+    {
+      "round": 74,
+      "action": "get_ui_tree",
+      "offsetMs": 370361,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 233,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 254
+    },
+    {
+      "round": 75,
+      "action": "screenshot",
+      "offsetMs": 375010,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 282,
+      "validPng": true,
+      "imageBase64Length": 2119248,
+      "changedFromPrevious": false,
+      "wallDurationMs": 336
+    },
+    {
+      "round": 75,
+      "action": "get_ui_tree",
+      "offsetMs": 375347,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 226,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 255
+    },
+    {
+      "round": 76,
+      "action": "screenshot",
+      "offsetMs": 380008,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 335,
+      "validPng": true,
+      "imageBase64Length": 2119248,
+      "changedFromPrevious": false,
+      "wallDurationMs": 390
+    },
+    {
+      "round": 76,
+      "action": "get_ui_tree",
+      "offsetMs": 380399,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 240,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 260
+    },
+    {
+      "round": 77,
+      "action": "screenshot",
+      "offsetMs": 385006,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 314,
+      "validPng": true,
+      "imageBase64Length": 2119248,
+      "changedFromPrevious": false,
+      "wallDurationMs": 361
+    },
+    {
+      "round": 77,
+      "action": "get_ui_tree",
+      "offsetMs": 385368,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 212,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 233
+    },
+    {
+      "round": 78,
+      "action": "screenshot",
+      "offsetMs": 390014,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 283,
+      "validPng": true,
+      "imageBase64Length": 2118816,
+      "changedFromPrevious": true,
+      "wallDurationMs": 336
+    },
+    {
+      "round": 78,
+      "action": "get_ui_tree",
+      "offsetMs": 390351,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 235,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 260
+    },
+    {
+      "round": 79,
+      "action": "screenshot",
+      "offsetMs": 395007,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 286,
+      "validPng": true,
+      "imageBase64Length": 2118816,
+      "changedFromPrevious": false,
+      "wallDurationMs": 346
+    },
+    {
+      "round": 79,
+      "action": "get_ui_tree",
+      "offsetMs": 395354,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 236,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 255
+    },
+    {
+      "round": 80,
+      "action": "screenshot",
+      "offsetMs": 400001,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 276,
+      "validPng": true,
+      "imageBase64Length": 2118816,
+      "changedFromPrevious": false,
+      "wallDurationMs": 328
+    },
+    {
+      "round": 80,
+      "action": "get_ui_tree",
+      "offsetMs": 400330,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 340,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 361
+    },
+    {
+      "round": 81,
+      "action": "screenshot",
+      "offsetMs": 405008,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 259,
+      "validPng": true,
+      "imageBase64Length": 2118816,
+      "changedFromPrevious": false,
+      "wallDurationMs": 308
+    },
+    {
+      "round": 81,
+      "action": "get_ui_tree",
+      "offsetMs": 405316,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 260,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 281
+    },
+    {
+      "round": 82,
+      "action": "screenshot",
+      "offsetMs": 410011,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 283,
+      "validPng": true,
+      "imageBase64Length": 2118816,
+      "changedFromPrevious": false,
+      "wallDurationMs": 333
+    },
+    {
+      "round": 82,
+      "action": "get_ui_tree",
+      "offsetMs": 410345,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 227,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 250
+    },
+    {
+      "round": 83,
+      "action": "screenshot",
+      "offsetMs": 415011,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 297,
+      "validPng": true,
+      "imageBase64Length": 2118816,
+      "changedFromPrevious": false,
+      "wallDurationMs": 347
+    },
+    {
+      "round": 83,
+      "action": "get_ui_tree",
+      "offsetMs": 415358,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 233,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 253
+    },
+    {
+      "round": 84,
+      "action": "screenshot",
+      "offsetMs": 420009,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 273,
+      "validPng": true,
+      "imageBase64Length": 2118816,
+      "changedFromPrevious": false,
+      "wallDurationMs": 326
+    },
+    {
+      "round": 84,
+      "action": "get_ui_tree",
+      "offsetMs": 420335,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 236,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 257
+    },
+    {
+      "round": 85,
+      "action": "screenshot",
+      "offsetMs": 425008,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 299,
+      "validPng": true,
+      "imageBase64Length": 2118816,
+      "changedFromPrevious": false,
+      "wallDurationMs": 364
+    },
+    {
+      "round": 85,
+      "action": "get_ui_tree",
+      "offsetMs": 425373,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 225,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 246
+    },
+    {
+      "round": 86,
+      "action": "screenshot",
+      "offsetMs": 430001,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 276,
+      "validPng": true,
+      "imageBase64Length": 2118816,
+      "changedFromPrevious": false,
+      "wallDurationMs": 326
+    },
+    {
+      "round": 86,
+      "action": "get_ui_tree",
+      "offsetMs": 430328,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 222,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 245
+    },
+    {
+      "round": 87,
+      "action": "screenshot",
+      "offsetMs": 435012,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 314,
+      "validPng": true,
+      "imageBase64Length": 2118816,
+      "changedFromPrevious": false,
+      "wallDurationMs": 365
+    },
+    {
+      "round": 87,
+      "action": "get_ui_tree",
+      "offsetMs": 435377,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 258,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 282
+    },
+    {
+      "round": 88,
+      "action": "screenshot",
+      "offsetMs": 440011,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 279,
+      "validPng": true,
+      "imageBase64Length": 2118816,
+      "changedFromPrevious": false,
+      "wallDurationMs": 325
+    },
+    {
+      "round": 88,
+      "action": "get_ui_tree",
+      "offsetMs": 440337,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 228,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 251
+    },
+    {
+      "round": 89,
+      "action": "screenshot",
+      "offsetMs": 445009,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 277,
+      "validPng": true,
+      "imageBase64Length": 2118816,
+      "changedFromPrevious": false,
+      "wallDurationMs": 332
+    },
+    {
+      "round": 89,
+      "action": "get_ui_tree",
+      "offsetMs": 445341,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 255,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 277
+    },
+    {
+      "round": 90,
+      "action": "screenshot",
+      "offsetMs": 450015,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 277,
+      "validPng": true,
+      "imageBase64Length": 2120120,
+      "changedFromPrevious": true,
+      "wallDurationMs": 329
+    },
+    {
+      "round": 90,
+      "action": "get_ui_tree",
+      "offsetMs": 450345,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 210,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 233
+    },
+    {
+      "round": 91,
+      "action": "screenshot",
+      "offsetMs": 455013,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 302,
+      "validPng": true,
+      "imageBase64Length": 2120120,
+      "changedFromPrevious": false,
+      "wallDurationMs": 355
+    },
+    {
+      "round": 91,
+      "action": "get_ui_tree",
+      "offsetMs": 455368,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 222,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 241
+    },
+    {
+      "round": 92,
+      "action": "screenshot",
+      "offsetMs": 460002,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 314,
+      "validPng": true,
+      "imageBase64Length": 2120120,
+      "changedFromPrevious": false,
+      "wallDurationMs": 366
+    },
+    {
+      "round": 92,
+      "action": "get_ui_tree",
+      "offsetMs": 460369,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 225,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 249
+    },
+    {
+      "round": 93,
+      "action": "screenshot",
+      "offsetMs": 465005,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 285,
+      "validPng": true,
+      "imageBase64Length": 2120120,
+      "changedFromPrevious": false,
+      "wallDurationMs": 333
+    },
+    {
+      "round": 93,
+      "action": "get_ui_tree",
+      "offsetMs": 465340,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 272,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 294
+    },
+    {
+      "round": 94,
+      "action": "screenshot",
+      "offsetMs": 470011,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 313,
+      "validPng": true,
+      "imageBase64Length": 2120120,
+      "changedFromPrevious": false,
+      "wallDurationMs": 364
+    },
+    {
+      "round": 94,
+      "action": "get_ui_tree",
+      "offsetMs": 470376,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 258,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 284
+    },
+    {
+      "round": 95,
+      "action": "screenshot",
+      "offsetMs": 475005,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 282,
+      "validPng": true,
+      "imageBase64Length": 2120120,
+      "changedFromPrevious": false,
+      "wallDurationMs": 328
+    },
+    {
+      "round": 95,
+      "action": "get_ui_tree",
+      "offsetMs": 475333,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 260,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 281
+    },
+    {
+      "round": 96,
+      "action": "screenshot",
+      "offsetMs": 480009,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 292,
+      "validPng": true,
+      "imageBase64Length": 2120120,
+      "changedFromPrevious": false,
+      "wallDurationMs": 343
+    },
+    {
+      "round": 96,
+      "action": "get_ui_tree",
+      "offsetMs": 480352,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 292,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 321
+    },
+    {
+      "round": 97,
+      "action": "screenshot",
+      "offsetMs": 485016,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 308,
+      "validPng": true,
+      "imageBase64Length": 2120120,
+      "changedFromPrevious": false,
+      "wallDurationMs": 358
+    },
+    {
+      "round": 97,
+      "action": "get_ui_tree",
+      "offsetMs": 485375,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 230,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 250
+    },
+    {
+      "round": 98,
+      "action": "screenshot",
+      "offsetMs": 490005,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 301,
+      "validPng": true,
+      "imageBase64Length": 2120120,
+      "changedFromPrevious": false,
+      "wallDurationMs": 352
+    },
+    {
+      "round": 98,
+      "action": "get_ui_tree",
+      "offsetMs": 490357,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 264,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 284
+    },
+    {
+      "round": 99,
+      "action": "screenshot",
+      "offsetMs": 495016,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 265,
+      "validPng": true,
+      "imageBase64Length": 2120120,
+      "changedFromPrevious": false,
+      "wallDurationMs": 317
+    },
+    {
+      "round": 99,
+      "action": "get_ui_tree",
+      "offsetMs": 495334,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 229,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 251
+    },
+    {
+      "round": 100,
+      "action": "screenshot",
+      "offsetMs": 500008,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 287,
+      "validPng": true,
+      "imageBase64Length": 2120120,
+      "changedFromPrevious": false,
+      "wallDurationMs": 339
+    },
+    {
+      "round": 100,
+      "action": "get_ui_tree",
+      "offsetMs": 500348,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 246,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 270
+    },
+    {
+      "round": 101,
+      "action": "screenshot",
+      "offsetMs": 505006,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 290,
+      "validPng": true,
+      "imageBase64Length": 2120120,
+      "changedFromPrevious": false,
+      "wallDurationMs": 344
+    },
+    {
+      "round": 101,
+      "action": "get_ui_tree",
+      "offsetMs": 505350,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 252,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 273
+    },
+    {
+      "round": 102,
+      "action": "screenshot",
+      "offsetMs": 510007,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 269,
+      "validPng": true,
+      "imageBase64Length": 2119180,
+      "changedFromPrevious": true,
+      "wallDurationMs": 318
+    },
+    {
+      "round": 102,
+      "action": "get_ui_tree",
+      "offsetMs": 510325,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 213,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 237
+    },
+    {
+      "round": 103,
+      "action": "screenshot",
+      "offsetMs": 515013,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 277,
+      "validPng": true,
+      "imageBase64Length": 2119180,
+      "changedFromPrevious": false,
+      "wallDurationMs": 332
+    },
+    {
+      "round": 103,
+      "action": "get_ui_tree",
+      "offsetMs": 515345,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 228,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 249
+    },
+    {
+      "round": 104,
+      "action": "screenshot",
+      "offsetMs": 520006,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 315,
+      "validPng": true,
+      "imageBase64Length": 2119180,
+      "changedFromPrevious": false,
+      "wallDurationMs": 364
+    },
+    {
+      "round": 104,
+      "action": "get_ui_tree",
+      "offsetMs": 520370,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 235,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 257
+    },
+    {
+      "round": 105,
+      "action": "screenshot",
+      "offsetMs": 525012,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 285,
+      "validPng": true,
+      "imageBase64Length": 2119180,
+      "changedFromPrevious": false,
+      "wallDurationMs": 342
+    },
+    {
+      "round": 105,
+      "action": "get_ui_tree",
+      "offsetMs": 525355,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 224,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 244
+    },
+    {
+      "round": 106,
+      "action": "screenshot",
+      "offsetMs": 530010,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 271,
+      "validPng": true,
+      "imageBase64Length": 2119180,
+      "changedFromPrevious": false,
+      "wallDurationMs": 347
+    },
+    {
+      "round": 106,
+      "action": "get_ui_tree",
+      "offsetMs": 530358,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 278,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 303
+    },
+    {
+      "round": 107,
+      "action": "screenshot",
+      "offsetMs": 535013,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 308,
+      "validPng": true,
+      "imageBase64Length": 2119180,
+      "changedFromPrevious": false,
+      "wallDurationMs": 368
+    },
+    {
+      "round": 107,
+      "action": "get_ui_tree",
+      "offsetMs": 535382,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 245,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 264
+    },
+    {
+      "round": 108,
+      "action": "screenshot",
+      "offsetMs": 540002,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 365,
+      "validPng": true,
+      "imageBase64Length": 2119180,
+      "changedFromPrevious": false,
+      "wallDurationMs": 419
+    },
+    {
+      "round": 108,
+      "action": "get_ui_tree",
+      "offsetMs": 540422,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 243,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 263
+    },
+    {
+      "round": 109,
+      "action": "screenshot",
+      "offsetMs": 545003,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 291,
+      "validPng": true,
+      "imageBase64Length": 2119180,
+      "changedFromPrevious": false,
+      "wallDurationMs": 345
+    },
+    {
+      "round": 109,
+      "action": "get_ui_tree",
+      "offsetMs": 545348,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 231,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 253
+    },
+    {
+      "round": 110,
+      "action": "screenshot",
+      "offsetMs": 550010,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 264,
+      "validPng": true,
+      "imageBase64Length": 2119180,
+      "changedFromPrevious": false,
+      "wallDurationMs": 316
+    },
+    {
+      "round": 110,
+      "action": "get_ui_tree",
+      "offsetMs": 550327,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 217,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 241
+    },
+    {
+      "round": 111,
+      "action": "screenshot",
+      "offsetMs": 555012,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 289,
+      "validPng": true,
+      "imageBase64Length": 2119180,
+      "changedFromPrevious": false,
+      "wallDurationMs": 337
+    },
+    {
+      "round": 111,
+      "action": "get_ui_tree",
+      "offsetMs": 555349,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 221,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 241
+    },
+    {
+      "round": 112,
+      "action": "screenshot",
+      "offsetMs": 560012,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 290,
+      "validPng": true,
+      "imageBase64Length": 2119180,
+      "changedFromPrevious": false,
+      "wallDurationMs": 343
+    },
+    {
+      "round": 112,
+      "action": "get_ui_tree",
+      "offsetMs": 560356,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 281,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 305
+    },
+    {
+      "round": 113,
+      "action": "screenshot",
+      "offsetMs": 565013,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 383,
+      "validPng": true,
+      "imageBase64Length": 2119180,
+      "changedFromPrevious": false,
+      "wallDurationMs": 436
+    },
+    {
+      "round": 113,
+      "action": "get_ui_tree",
+      "offsetMs": 565449,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 276,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 297
+    },
+    {
+      "round": 114,
+      "action": "screenshot",
+      "offsetMs": 570002,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 315,
+      "validPng": true,
+      "imageBase64Length": 2120176,
+      "changedFromPrevious": true,
+      "wallDurationMs": 374
+    },
+    {
+      "round": 114,
+      "action": "get_ui_tree",
+      "offsetMs": 570377,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 273,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 294
+    },
+    {
+      "round": 115,
+      "action": "screenshot",
+      "offsetMs": 575005,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 296,
+      "validPng": true,
+      "imageBase64Length": 2120176,
+      "changedFromPrevious": false,
+      "wallDurationMs": 346
+    },
+    {
+      "round": 115,
+      "action": "get_ui_tree",
+      "offsetMs": 575351,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 285,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 306
+    },
+    {
+      "round": 116,
+      "action": "screenshot",
+      "offsetMs": 580017,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 431,
+      "validPng": true,
+      "imageBase64Length": 2120176,
+      "changedFromPrevious": false,
+      "wallDurationMs": 483
+    },
+    {
+      "round": 116,
+      "action": "get_ui_tree",
+      "offsetMs": 580502,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 233,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 253
+    },
+    {
+      "round": 117,
+      "action": "screenshot",
+      "offsetMs": 585013,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 404,
+      "validPng": true,
+      "imageBase64Length": 2120176,
+      "changedFromPrevious": false,
+      "wallDurationMs": 458
+    },
+    {
+      "round": 117,
+      "action": "get_ui_tree",
+      "offsetMs": 585472,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 250,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 270
+    },
+    {
+      "round": 118,
+      "action": "screenshot",
+      "offsetMs": 590007,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 290,
+      "validPng": true,
+      "imageBase64Length": 2120176,
+      "changedFromPrevious": false,
+      "wallDurationMs": 341
+    },
+    {
+      "round": 118,
+      "action": "get_ui_tree",
+      "offsetMs": 590349,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 273,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 298
+    },
+    {
+      "round": 119,
+      "action": "screenshot",
+      "offsetMs": 595003,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 296,
+      "validPng": true,
+      "imageBase64Length": 2120176,
+      "changedFromPrevious": false,
+      "wallDurationMs": 342
+    },
+    {
+      "round": 119,
+      "action": "get_ui_tree",
+      "offsetMs": 595346,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 224,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 242
+    },
+    {
+      "round": 120,
+      "action": "screenshot",
+      "offsetMs": 600010,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 284,
+      "validPng": true,
+      "imageBase64Length": 2120176,
+      "changedFromPrevious": false,
+      "wallDurationMs": 337
+    },
+    {
+      "round": 120,
+      "action": "get_ui_tree",
+      "offsetMs": 600347,
+      "ok": true,
+      "status": "success",
+      "serverDurationMs": 205,
+      "screen": {
+        "coordinate_space": "screen",
+        "height": 874,
+        "width": 402
+      },
+      "rootCount": 1,
+      "wallDurationMs": 236
+    }
+  ],
+  "limitations": [
+    "Measures MCP screenshots and accessibility, not continuous video FPS.",
+    "No installer rebuild, cold-start, or synthetic Mac-load test."
+  ],
+  "endedAt": "2026-10-29T19:58:31.432Z",
+  "elapsedMs": 600584,
+  "summary": [
+    {
+      "action": "screenshot",
+      "count": 121,
+      "failures": 0,
+      "medianMs": 346,
+      "p95Ms": 424,
+      "maxMs": 498,
+      "firstMinuteMedianMs": 385,
+      "lastMinuteMedianMs": 345
+    },
+    {
+      "action": "get_ui_tree",
+      "count": 121,
+      "failures": 0,
+      "medianMs": 253,
+      "p95Ms": 321,
+      "maxMs": 361,
+      "firstMinuteMedianMs": 243,
+      "lastMinuteMedianMs": 263
+    }
+  ],
+  "screenshotChanges": 10
+}

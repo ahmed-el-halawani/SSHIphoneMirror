@@ -3,6 +3,7 @@ const path = require('node:path');
 const os = require('node:os');
 const { spawn } = require('node:child_process');
 const net = require('node:net');
+const { Duplex } = require('node:stream');
 const { Client: SSHClient } = require('ssh2');
 const { parse } = require('smol-toml');
 const { fingerprint, quote } = require('../core.cjs');
@@ -53,7 +54,16 @@ function openSSHRunner(recipe, log) {
   if (recipe.executable !== 'ssh' || !Array.isArray(recipe.argv) || recipe.argv[0] !== 'ssh') throw Error('Unsupported SSH connection recipe.');
   if(!recipe.argv.some(arg=>/^(?:-o)?StrictHostKeyChecking=yes$/i.test(arg)) || recipe.argv.some(arg=>/StrictHostKeyChecking=(?:no|off|accept-new)/i.test(arg)))throw Error('Headless SSH requires strict host-key verification.');
   return {
-    close() {},
+    close() { this.automationWorker?.close(); },
+    async open(command) {
+      const child = spawn('ssh', [...recipe.argv.slice(1), command], { windowsHide: true, shell: false, env: { ...process.env, ...recipe.env }, stdio: ['pipe', 'pipe', 'pipe'] });
+      const stream = Duplex.from({ readable: child.stdout, writable: child.stdin });
+      child.stderr.resume();
+      child.on('error', () => stream.destroy(Error('SSH worker could not start.')));
+      child.on('close', () => stream.destroy());
+      stream.on('close', () => terminate(child));
+      return stream;
+    },
     async forward(remotePorts, signal) {
       if(signal?.aborted)throw cancelled();
       for (const port of remotePorts) if (![17425,19100].includes(port)) throw Error('Unsupported device port.');
@@ -79,10 +89,17 @@ function openSSHRunner(recipe, log) {
         throw Error('Timed out opening the device SSH tunnel.');
       } catch(e) {child.kill();throw e;}
     },
-    runSigned(script, timeout=600000, signal) {
+    async runSigned(script, timeout=600000, signal) {
       if(signal?.aborted)return Promise.reject(cancelled());
       const signing=recipe.signing;
       if (!signing || signing.mode==='off') throw Error('Enable a signing mode for this Mac in SSH Resource Manager first.');
+      // The Windows signing launcher cannot spawn commands above the OS argument limit.
+      if (signing.command_env && Buffer.byteLength(script) > 16000) {
+        const remote = (await this.run(`umask 077\nf=$(mktemp /tmp/iphone-mirror-signed.XXXXXXXX) || exit 1\nprintf %s '${Buffer.from(script).toString('base64')}' | base64 -D > "$f" || { rm -f "$f"; exit 1; }\nprintf '%s' "$f"`, 30000, signal, { quiet: true })).trim();
+        if (!/^\/tmp\/iphone-mirror-signed\.[A-Za-z0-9]+$/.test(remote)) throw Error('Invalid signed-script staging path.');
+        try { return await this.runSigned(`/bin/sh ${quote(remote)}`, timeout, signal); }
+        finally { await this.run(`rm -f ${quote(remote)}`, 5000, undefined, { quiet: true }).catch(() => {}); }
+      }
       const command=`printf %s '${Buffer.from(script).toString('base64')}' | base64 -D | /bin/sh`;
       let executable, args, env={...process.env,...signing.env};
       if(signing.command_env) {
@@ -177,7 +194,8 @@ async function connect(profile, password, trust, log) {
           });
         });
         const fastRunner = {
-          close() { fastConn.end(); runner.close(); },
+          close() { this.automationWorker?.close(); fastConn.end(); runner.close(); },
+          open: runner.open.bind(runner),
           runSigned: runner.runSigned.bind(runner),
           forward: runner.forward.bind(runner),
           run(script, timeout = 180000, signal, options = {}) {
@@ -237,7 +255,10 @@ async function connect(profile, password, trust, log) {
     });
   }).catch(e => { conn.end(); throw e; });
   const runner = {
-    close() { conn.end(); },
+    close() { this.automationWorker?.close(); conn.end(); },
+    open(command) {
+      return new Promise((resolve, reject) => conn.exec(command, (error, stream) => error ? reject(error) : resolve(stream)));
+    },
     run(script, timeout = 180000, signal, options = {}) {
       if(signal?.aborted)return Promise.reject(cancelled());
       return new Promise((resolve, reject) => {

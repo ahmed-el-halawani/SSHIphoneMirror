@@ -47,7 +47,7 @@ test('MCP only continues an action rejected before dispatch; unknown outcomes ar
         if(calls.length===1)return JSON.stringify({ok:false,executed:code==='OUTCOME_UNKNOWN'?null:false,error:{code,message:code}});
         return '{"ok":true,"executed":true,"verified":false}';
       }});
-      const controller=new Controller({hosts:[{id:'mac',control:true}]});controller.readyHosts.add('mac');
+      const controller=new Controller({hosts:[{id:'mac',control:true}]});controller.readyHosts.set('mac',Promise.resolve());
       const result=await controller.call('tap',{hostId:'mac',deviceId,x:1,y:1});
       assert.equal(result.ok,code==='VIEWER_HANDOFF_REQUIRED');
       assert.deepEqual(calls,code==='VIEWER_HANDOFF_REQUIRED'?['tap','request_control','tap']:['tap']);

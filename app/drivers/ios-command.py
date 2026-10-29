@@ -194,6 +194,14 @@ class Simulator:
                 os.killpg(proc.pid, signal.SIGKILL)
                 proc.wait()
                 fail('TIMEOUT', 'Device operation reached its deadline; inspect state before retrying actions.')
+            except BaseException:
+                import signal
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                proc.wait()
+                raise
             output.seek(0, 2)
             if output.tell() > LIMIT:
                 fail('OUTPUT_TOO_LARGE', 'Device output exceeds 16 MiB.')
@@ -214,12 +222,12 @@ class Simulator:
         bootstrap = "import base64,json,runpy,sys;import idb.common.constants as c;p=json.loads(base64.b64decode('" + payload + "'));sys.argv=p['argv'];c.BASE_IDB_FILE_PATH=p['session'];c.IDB_STATE_FILE_PATH=p['session']+'/state';c.IDB_LOGS_PATH=p['session']+'/logs';c.IDB_PID_PATH=p['session']+'/pid';runpy.run_path(sys.argv[0],run_name='__main__')"
         return self.run([str(pathlib.Path(self.idb).with_name('python')), '-I', '-X', 'pycache_prefix=' + str(self.session / 'pycache'), '-'], bootstrap.encode())
 
-    def get_screen(self):
+    def get_screen(self, image_dimensions=None):
         screen_file = self.session / f"screen_{self.device}.json"
         try:
             if screen_file.exists():
                 data = json.loads(screen_file.read_text())
-                if isinstance(data, dict) and data.get('width') and data.get('height'):
+                if isinstance(data, dict) and data.get('width') and data.get('height') and (not image_dimensions or (data['width'] * data.get('scale', 1) == image_dimensions['width'] and data['height'] * data.get('scale', 1) == image_dimensions['height'])):
                     return data
         except Exception:
             pass
@@ -228,15 +236,18 @@ class Simulator:
         if s.get('width') and s.get('height'):
             scale = 3.0
             try:
-                with tempfile.TemporaryDirectory() as td:
-                    tfile = pathlib.Path(td) / 's.png'
-                    subprocess.run(['xcrun', 'simctl', 'io', self.device, 'screenshot', str(tfile)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
-                    if tfile.exists():
-                        b = tfile.read_bytes()
-                        if len(b) > 24 and b[:8] == b'\x89PNG\r\n\x1a\n':
-                            import struct
-                            pw, _ = struct.unpack('>II', b[16:24])
-                            scale = float(round(pw / s['width']))
+                if image_dimensions:
+                    scale = image_dimensions['width'] / s['width']
+                else:
+                    with tempfile.TemporaryDirectory() as td:
+                        tfile = pathlib.Path(td) / 's.png'
+                        subprocess.run(['xcrun', 'simctl', 'io', self.device, 'screenshot', str(tfile)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+                        if tfile.exists():
+                            b = tfile.read_bytes()
+                            if len(b) > 24 and b[:8] == b'\x89PNG\r\n\x1a\n':
+                                import struct
+                                pw, _ = struct.unpack('>II', b[16:24])
+                                scale = float(round(pw / s['width']))
             except Exception:
                 pass
             s['scale'] = scale
@@ -527,7 +538,6 @@ def dispatch(args):
                 logs = driver.request('/log', {'type': 'syslog'})[-args.get('maxLines', 100):]
             return {'logs': logs, 'untrusted': True}
         if action == 'screenshot':
-            screen = driver.get_screen() if hasattr(driver, 'get_screen') else driver.tree().get('screen')
             img_b64 = driver.screenshot()
             img_dims = None
             try:
@@ -536,10 +546,11 @@ def dispatch(args):
                     import struct
                     pw, ph = struct.unpack('>II', raw_bytes[16:24])
                     img_dims = {'width': pw, 'height': ph}
-                    if screen and screen.get('width'):
-                        screen['scale'] = float(round(pw / screen['width']))
             except Exception:
                 pass
+            screen = driver.get_screen(img_dims) if isinstance(driver, Simulator) else driver.get_screen()
+            if img_dims and screen and screen.get('width'):
+                screen['scale'] = img_dims['width'] / screen['width']
             return {'image': img_b64, 'mimeType': 'image/png', 'untrusted': True, 'screen': screen, 'imageDimensions': img_dims}
         if action == 'wait_for':
             return wait_for(driver, args)
@@ -547,24 +558,25 @@ def dispatch(args):
             s = driver.get_screen() if hasattr(driver, 'get_screen') else driver.tree()['screen']
             scale = float(s.get('scale', 3.0) or 3.0)
             coord_space = args.get('coordinateSpace', 'points')
+            keys = ('x1', 'y1', 'x2', 'y2') if action == 'swipe' else ('x', 'y')
+            # A gesture uses one coordinate system, even when only one axis exceeds point bounds.
+            auto_pixels = coord_space == 'points' and any(
+                isinstance(args.get(k), (int, float)) and args[k] >= s['width' if 'x' in k else 'height']
+                for k in keys)
 
             def convert_coord(val, axis):
                 bound = s['width'] if axis == 'x' else s['height']
                 if not isinstance(val, (int, float)) or not math.isfinite(val):
                     fail('INVALID_ARGUMENT', 'Coordinates must be screen points inside the current viewport.')
-                if coord_space == 'pixels':
+                if coord_space == 'pixels' or auto_pixels:
                     return val / scale
                 if coord_space == 'relative':
                     if val <= 1.0:
                         return val * bound
                     elif val <= 1000.0:
                         return (val / 1000.0) * bound
-                # Auto-detect if passed in screenshot pixels
-                if val >= bound and (val <= bound * scale * 1.05):
-                    return val / scale
                 return val
 
-            keys = ('x1', 'y1', 'x2', 'y2') if action == 'swipe' else ('x', 'y')
             converted = {}
             was_mapped = False
             for k in keys:

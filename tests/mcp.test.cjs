@@ -6,7 +6,8 @@ test('standalone MCP negotiates stdio, lists tools, returns structured results a
   const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
   const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js');
   const client = new Client({ name: 'mirror-test', version: '1.0' });
-  const transport = new StdioClientTransport({ command: process.execPath, args: [path.resolve('app/mcp/server.mjs')], env: { ...process.env, IPHONE_MIRROR_CONFIG: path.join(require('node:os').tmpdir(), 'absent-mirror-test-config.json') }, stderr: 'pipe' });
+  const source = `import {serveStdio} from '@modelcontextprotocol/server/stdio'; import {createServer} from './app/mcp/server.mjs'; const handle=serveStdio(()=>createServer()); process.stdin.once('end',()=>handle.close());`;
+  const transport = new StdioClientTransport({ command: process.execPath, args: ['--input-type=module', '-e', source], env: { ...process.env, IPHONE_MIRROR_CONFIG: path.join(require('node:os').tmpdir(), 'absent-mirror-test-config.json') }, stderr: 'pipe' });
   try {
     await client.connect(transport);
     const { tools } = await client.listTools();

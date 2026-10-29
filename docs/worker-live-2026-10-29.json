@@ -1,0 +1,62 @@
+{
+  "passed": true,
+  "checks": [
+    "cold concurrent reads",
+    "exact element navigation",
+    "expected state verification",
+    "relative swipe coordinates",
+    "page return"
+  ],
+  "samples": [
+    {
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 2126,
+      "wallMs": 2149
+    },
+    {
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 2339,
+      "wallMs": 2343
+    },
+    {
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 200,
+      "wallMs": 202
+    },
+    {
+      "action": "tap_element",
+      "ok": true,
+      "verified": true,
+      "durationMs": 1084,
+      "wallMs": 1085
+    },
+    {
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 255,
+      "wallMs": 257
+    },
+    {
+      "action": "swipe",
+      "ok": true,
+      "verified": false,
+      "durationMs": 480,
+      "wallMs": 481
+    },
+    {
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 1455,
+      "wallMs": 1456
+    },
+    {
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 464,
+      "wallMs": 481
+    }
+  ]
+}

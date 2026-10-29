@@ -5,6 +5,18 @@ let opening = false, deviceTask = null, cancelTask = null, choiceRevision = 0;
 let mcpSetup=null;
 let viewerReadOnly=false;
 window.mirror.onViewerMode(value=>{viewerReadOnly=value;setBusy(running);});
+window.mirror.onAgentView(value => {
+  revision++;
+  if (!value.connected) live = false;
+  viewing = '';
+  if (!value.disconnected) {
+    ready = true;
+    viewing = value.connected ? value.deviceId : '';
+    renderDevices(value.devices, value.deviceId);
+    showPanel(false).catch(error => log(error.message));
+  }
+  updateStageAccess(); updateDeviceState(); setBusy(!!value.connecting);
+});
 function updateStageAccess() {
   const covered = panelVisible || live;
   document.querySelector('main').inert = covered;

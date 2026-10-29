@@ -1,0 +1,373 @@
+{
+  "date": "2026-10-29",
+  "target": "iPhone 17 simulator / Khuta Quran",
+  "samples": [
+    {
+      "phase": "initial",
+      "action": "list_devices",
+      "ok": true,
+      "durationMs": 1106,
+      "wallMs": 1114
+    },
+    {
+      "phase": "initial",
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 19861,
+      "wallMs": 19908
+    },
+    {
+      "phase": "initial",
+      "action": "launch_app",
+      "ok": true,
+      "durationMs": 1280,
+      "wallMs": 1281,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "initial",
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 12511,
+      "wallMs": 12511
+    },
+    {
+      "phase": "initial",
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 27460,
+      "wallMs": 27480
+    },
+    {
+      "phase": "initial",
+      "action": "tap_element",
+      "ok": false,
+      "durationMs": 37828,
+      "wallMs": 37829,
+      "executed": false,
+      "verified": false,
+      "errorCode": "TIMEOUT",
+      "stage": "idb.ui.describe-point"
+    },
+    {
+      "phase": "initial",
+      "action": "tap_element",
+      "ok": false,
+      "durationMs": 37220,
+      "wallMs": 37221,
+      "executed": false,
+      "verified": false,
+      "errorCode": "TIMEOUT",
+      "stage": "idb.ui.describe-point"
+    },
+    {
+      "phase": "initial",
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 26547,
+      "wallMs": 26565
+    },
+    {
+      "phase": "initial",
+      "action": "tap",
+      "ok": true,
+      "durationMs": 21837,
+      "wallMs": 21839,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "initial",
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 22986,
+      "wallMs": 23001
+    },
+    {
+      "phase": "initial",
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 25666,
+      "wallMs": 25668
+    },
+    {
+      "phase": "initial",
+      "action": "tap",
+      "ok": true,
+      "durationMs": 26106,
+      "wallMs": 26107,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "initial",
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 16102,
+      "wallMs": 16103
+    },
+    {
+      "phase": "initial",
+      "action": "tap",
+      "ok": true,
+      "durationMs": 24753,
+      "wallMs": 24752,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "initial",
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 23543,
+      "wallMs": 23544
+    },
+    {
+      "phase": "initial",
+      "action": "tap",
+      "ok": false,
+      "durationMs": 62958,
+      "wallMs": 62965,
+      "executed": null,
+      "verified": false,
+      "errorCode": "OUTCOME_UNKNOWN"
+    },
+    {
+      "phase": "initial",
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 55323,
+      "wallMs": 55331
+    },
+    {
+      "phase": "initial",
+      "action": "tap",
+      "ok": true,
+      "durationMs": 50901,
+      "wallMs": 50903,
+      "executed": true,
+      "verified": true
+    },
+    {
+      "phase": "initial",
+      "action": "tap",
+      "ok": true,
+      "durationMs": 24665,
+      "wallMs": 24666,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "initial",
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 21072,
+      "wallMs": 21073
+    },
+    {
+      "phase": "initial",
+      "action": "tap",
+      "ok": true,
+      "durationMs": 18272,
+      "wallMs": 18273,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "initial",
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 15090,
+      "wallMs": 15090
+    },
+    {
+      "phase": "initial",
+      "action": "tap",
+      "ok": true,
+      "durationMs": 16001,
+      "wallMs": 16001,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "initial",
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 16989,
+      "wallMs": 16991
+    },
+    {
+      "phase": "initial",
+      "action": "tap",
+      "ok": true,
+      "durationMs": 15416,
+      "wallMs": 15417,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "initial",
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 12928,
+      "wallMs": 12928
+    },
+    {
+      "phase": "initial",
+      "action": "tap_element",
+      "ok": true,
+      "durationMs": 43080,
+      "wallMs": 43082,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "initial",
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 21323,
+      "wallMs": 21324
+    },
+    {
+      "phase": "initial",
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 17476,
+      "wallMs": 17488
+    },
+    {
+      "phase": "initial",
+      "action": "tap",
+      "ok": true,
+      "durationMs": 15323,
+      "wallMs": 15324,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "initial",
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 12765,
+      "wallMs": 12779
+    },
+    {
+      "phase": "initial",
+      "action": "tap",
+      "ok": true,
+      "durationMs": 12513,
+      "wallMs": 12515,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "initial",
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 6888,
+      "wallMs": 6890
+    },
+    {
+      "phase": "initial",
+      "action": "tap",
+      "ok": true,
+      "durationMs": 9611,
+      "wallMs": 9612,
+      "executed": true,
+      "verified": true
+    },
+    {
+      "phase": "initial",
+      "action": "tap",
+      "ok": true,
+      "durationMs": 10606,
+      "wallMs": 10607,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "initial",
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 3787,
+      "wallMs": 3807
+    },
+    {
+      "phase": "initial",
+      "action": "swipe",
+      "ok": true,
+      "durationMs": 1453,
+      "wallMs": 1455,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "initial",
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 2984,
+      "wallMs": 3007
+    },
+    {
+      "phase": "follow-up",
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 2811,
+      "wallMs": 2840
+    },
+    {
+      "phase": "follow-up",
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 1332,
+      "wallMs": 1353
+    },
+    {
+      "phase": "follow-up",
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 1271,
+      "wallMs": 1297
+    },
+    {
+      "phase": "follow-up",
+      "action": "get_ui_tree",
+      "ok": true,
+      "durationMs": 1198,
+      "wallMs": 1202
+    },
+    {
+      "phase": "follow-up",
+      "action": "tap_element",
+      "ok": true,
+      "durationMs": 1719,
+      "wallMs": 1721,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "follow-up",
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 1567,
+      "wallMs": 1594
+    },
+    {
+      "phase": "follow-up",
+      "action": "tap_element",
+      "ok": true,
+      "durationMs": 2383,
+      "wallMs": 2384,
+      "executed": true,
+      "verified": false
+    },
+    {
+      "phase": "follow-up",
+      "action": "screenshot",
+      "ok": true,
+      "durationMs": 1700,
+      "wallMs": 1718
+    }
+  ]
+}

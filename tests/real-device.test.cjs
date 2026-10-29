@@ -3,6 +3,26 @@ const assert=require('node:assert/strict');
 const {validateRealUdid,validateInput,startScript,input}=require('../app/real-device.cjs');
 const session='12345678-1234-1234-1234-123456789abc';
 
+test('session recovery reuses the same iPhone signing team only while it remains valid',()=>{
+  const source=startScript('00008140-0000000000000001');
+  const selection=source.slice(source.indexOf('previous={}'),source.indexOf("pidfile=tools/"));
+  const code=`import json,pathlib,tempfile,os
+os.environ['MIRROR_DEVICE_UDID']='phone'
+with tempfile.TemporaryDirectory() as folder:
+ tools=pathlib.Path(folder)
+ for state,teams,expected in [({'team':'A','udid':'phone'},{'A','B'},'A'),({'team':'old','udid':'phone'},{'B'},'B'),({'team':'A','udid':'other'},{'A','B'},None),({'team':'old','udid':'phone'},{'A','B'},None)]:
+  (tools/'current-session.json').write_text(json.dumps(state))
+  scope={'tools':tools,'teams':teams,'json':json,'os':os}
+  try:
+   exec(${JSON.stringify(selection)},scope)
+   assert scope['team']==expected
+  except SystemExit:
+   assert expected is None
+`;
+  const result=require('node:child_process').spawnSync(process.platform==='win32'?'python':'python3',['-c',code],{encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr);
+});
+
 test('real device identifiers and input reject injection and invalid coordinates',()=>{
   assert.equal(validateRealUdid('00008140-0000000000000001'),'00008140-0000000000000001');
   assert.throws(()=>startScript('00008140-0000000000000001;whoami'));

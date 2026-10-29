@@ -2,7 +2,7 @@
 
 Open **Start-App.cmd**, or the packaged **release/win-unpacked/iPhone Mirror.exe**.
 
-Headless Simulator and real-iPhone automation is available through a standalone MCP server. See [setup, tool contracts and recovery](docs/headless-automation.md) and the [validation report](docs/automation-validation.md). Use **MCP Setup** in the top bar for one-click Claude Code, Codex and OpenCode registration, or copy the client-specific manual configuration. Start a source server with `npm run mcp`. Simulator setup automatically installs the bundled Python/IDB runtime on the qualified Intel macOS 15.8.1 / Xcode 26.3 Mac; no target-side build or package download is needed. Hosts are read-only until control is enabled in the separate automation configuration.
+Simulator and real-iPhone automation is available through a standalone MCP server. Agent use opens the desktop in Watch agent mode; closing the window disconnects video to the tray while automation continues. See [setup, tool contracts and recovery](docs/headless-automation.md) and the [validation report](docs/automation-validation.md). Use **MCP Setup** in the top bar for one-click Claude Code, Codex and OpenCode registration, or copy the client-specific manual configuration. Start a source server with `npm run mcp`. Simulator setup automatically installs the bundled Python/IDB runtime on the qualified Intel macOS 15.8.1 / Xcode 26.3 Mac; no target-side build or package download is needed. Hosts are read-only until control is enabled in the separate automation configuration.
 
 ## Automatic GitHub releases
 

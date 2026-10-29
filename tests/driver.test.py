@@ -21,6 +21,17 @@ def element(identifier='button', **values):
 
 
 class DriverTests(unittest.TestCase):
+    def test_interrupted_cli_terminates_its_process_group(self):
+        fake = driver.Simulator.__new__(driver.Simulator)
+        fake.root, fake.deadline = pathlib.Path('/runtime'), driver.time.monotonic() + 10
+        process = unittest.mock.Mock(pid=123)
+        process.communicate.side_effect = KeyboardInterrupt
+        with patch.object(driver.subprocess, 'Popen', return_value=process), patch.object(driver.os, 'killpg', create=True) as kill, patch('signal.SIGKILL', 9, create=True):
+            with self.assertRaises(KeyboardInterrupt):
+                fake.run(['unused'])
+            self.assertEqual(kill.call_args.args[0], 123)
+            process.wait.assert_called_once()
+
     def test_control_handoff_waits_for_owner_release_and_preserves_legacy_viewers(self):
         device='8AA89128-E540-44BB-82FD-43999DDC6838'
         with tempfile.TemporaryDirectory() as folder, patch.object(driver,'device_lock',return_value=contextlib.nullcontext()), patch.object(driver,'reservation_path',return_value=pathlib.Path(folder)/'viewer.json'):
@@ -144,6 +155,21 @@ class DriverTests(unittest.TestCase):
             lock.assert_called_once_with(device)
             run.assert_called_once_with(['xcrun', 'simctl', 'shutdown', device], check=True, capture_output=True, timeout=20)
 
+    def test_screenshot_calibration_reuses_captured_pixels_and_refreshes_rotated_bounds(self):
+        fake = driver.Simulator.__new__(driver.Simulator)
+        fake.device = 'simulator'
+        fake.tree = unittest.mock.Mock(return_value={'screen': {'width': 400, 'height': 800}})
+        with tempfile.TemporaryDirectory() as folder, patch.object(driver.subprocess, 'run') as capture:
+            fake.session = pathlib.Path(folder)
+            self.assertEqual(fake.get_screen({'width': 1200, 'height': 2400})['scale'], 3)
+            fake.get_screen({'width': 1200, 'height': 2400})
+            self.assertEqual(fake.tree.call_count, 1)
+            fake.tree.return_value = {'screen': {'width': 800, 'height': 400}}
+            rotated = fake.get_screen({'width': 2400, 'height': 1200})
+            self.assertEqual((rotated['width'], rotated['height'], rotated['scale']), (800, 400, 3))
+            self.assertEqual(fake.tree.call_count, 2)
+            capture.assert_not_called()
+
     def test_coordinate_mapping_and_pixel_auto_detection(self):
         device = '8AA89128-E540-44BB-82FD-43999DDC6838'
         fake_sim = driver.Simulator.__new__(driver.Simulator)
@@ -162,6 +188,13 @@ class DriverTests(unittest.TestCase):
             self.assertTrue(res2['executed'])
             self.assertEqual(tapped[-1], (200.0, 400.0, None))
             self.assertEqual(res2['coordinateMapping']['tappedPoints'], {'x': 200.0, 'y': 400.0})
+            # Pixel x may be inside point bounds: both axes must still share the pixel scale.
+            driver.dispatch({'action': 'tap', 'deviceId': device, 'x': 300, 'y': 1200})
+            self.assertEqual(tapped[-1], (100.0, 400.0, None))
+            swiped = []
+            fake_sim.swipe = lambda args: swiped.append(args)
+            driver.dispatch({'action': 'swipe', 'deviceId': device, 'x1': 300, 'y1': 1800, 'x2': 300, 'y2': 600})
+            self.assertEqual(tuple(swiped[-1][k] for k in ('x1', 'y1', 'x2', 'y2')), (100.0, 600.0, 100.0, 200.0))
             # Explicit coordinateSpace='pixels'
             res3 = driver.dispatch({'action': 'tap', 'deviceId': device, 'x': 300, 'y': 600, 'coordinateSpace': 'pixels'})
             self.assertEqual(tapped[-1], (100.0, 200.0, None))

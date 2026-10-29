@@ -14,7 +14,16 @@ async function execute(conn, action, args, signal) {
     real.validateRealUdid(args.deviceId?.slice(5));
     args={...args,sessionScript:real.startScript(args.deviceId.slice(5))};
   }
-  try { output = await (action==='start_session'?conn.runSigned.bind(conn):conn.run.bind(conn))(scriptFor(action, args), action==='start_session'?720000:Math.min(180000, (args.timeoutMs || 30000) + 15000), signal, { maxBytes: action === 'screenshot' ? 24 * 1024 * 1024 : 4 * 1024 * 1024, quiet: true }); }
+  try {
+    const timeout = action === 'start_session' ? 720000 : Math.min(180000, (args.timeoutMs || 30000) + 15000);
+    if (conn.open && args.deviceId && !args.deviceId.startsWith('real:') && action !== 'wait_viewer') {
+      const { Worker } = require('./worker.cjs');
+      conn.automationWorker ||= new Worker(conn);
+      output = await conn.automationWorker.request(action, args, timeout, signal);
+    } else {
+      output = await (action === 'start_session' ? conn.runSigned.bind(conn) : conn.run.bind(conn))(scriptFor(action, args), timeout, signal, { maxBytes: action === 'screenshot' ? 24 * 1024 * 1024 : 4 * 1024 * 1024, quiet: true });
+    }
+  }
   catch (error) {
     throw Object.assign(Error(MUTATIONS.has(action) ? 'Connection interrupted; the action may have executed. Inspect device state before retrying.' : 'Device connection failed.'), { code: MUTATIONS.has(action) ? 'OUTCOME_UNKNOWN' : 'CONNECTION_FAILED', cause: error });
   }

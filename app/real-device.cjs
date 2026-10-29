@@ -63,11 +63,13 @@ for name in names:
   subject=subprocess.check_output(['openssl','x509','-noout','-subject','-nameopt','RFC2253'],input=pem).decode()
   match=re.search(r'(?:^|,)OU=([A-Z0-9]{10})(?:,|$)',subject)
   if match: teams.add(match.group(1))
-if len(teams)!=1: raise SystemExit('Cannot choose a unique development team. Configure a single valid team for automatic WDA signing on this Mac.')
-team=next(iter(teams))
 previous={}
 try: previous=json.loads((tools/'current-session.json').read_text())
 except (OSError,ValueError): pass
+team=previous.get('team') if previous.get('udid')==os.environ['MIRROR_DEVICE_UDID'] else None
+if team not in teams:
+  if len(teams)!=1: raise SystemExit('Cannot choose a unique development team. Configure a single valid team for automatic WDA signing on this Mac.')
+  team=next(iter(teams))
 pidfile=tools/'appium.pid'
 if pidfile.exists():
   try:

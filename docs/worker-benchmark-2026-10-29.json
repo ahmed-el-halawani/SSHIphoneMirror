@@ -1,0 +1,116 @@
+{
+  "recordedAt": "2026-10-29T18:45:26.474Z",
+  "samples": [
+    {
+      "mode": "legacy",
+      "action": "screenshot",
+      "warmup": true,
+      "durationMs": 1006
+    },
+    {
+      "mode": "worker",
+      "action": "screenshot",
+      "warmup": true,
+      "durationMs": 862
+    },
+    {
+      "mode": "legacy",
+      "action": "screenshot",
+      "warmup": false,
+      "durationMs": 890
+    },
+    {
+      "mode": "worker",
+      "action": "screenshot",
+      "warmup": false,
+      "durationMs": 298
+    },
+    {
+      "mode": "worker",
+      "action": "screenshot",
+      "warmup": false,
+      "durationMs": 293
+    },
+    {
+      "mode": "legacy",
+      "action": "screenshot",
+      "warmup": false,
+      "durationMs": 867
+    },
+    {
+      "mode": "legacy",
+      "action": "screenshot",
+      "warmup": false,
+      "durationMs": 933
+    },
+    {
+      "mode": "worker",
+      "action": "screenshot",
+      "warmup": false,
+      "durationMs": 272
+    },
+    {
+      "mode": "legacy",
+      "action": "get_ui_tree",
+      "warmup": true,
+      "durationMs": 791
+    },
+    {
+      "mode": "worker",
+      "action": "get_ui_tree",
+      "warmup": true,
+      "durationMs": 226
+    },
+    {
+      "mode": "legacy",
+      "action": "get_ui_tree",
+      "warmup": false,
+      "durationMs": 817
+    },
+    {
+      "mode": "worker",
+      "action": "get_ui_tree",
+      "warmup": false,
+      "durationMs": 195
+    },
+    {
+      "mode": "worker",
+      "action": "get_ui_tree",
+      "warmup": false,
+      "durationMs": 191
+    },
+    {
+      "mode": "legacy",
+      "action": "get_ui_tree",
+      "warmup": false,
+      "durationMs": 821
+    },
+    {
+      "mode": "legacy",
+      "action": "get_ui_tree",
+      "warmup": false,
+      "durationMs": 773
+    },
+    {
+      "mode": "worker",
+      "action": "get_ui_tree",
+      "warmup": false,
+      "durationMs": 199
+    }
+  ],
+  "summary": [
+    {
+      "action": "screenshot",
+      "legacyMedianMs": 890,
+      "workerMedianMs": 293,
+      "reductionPercent": 67
+    },
+    {
+      "action": "get_ui_tree",
+      "legacyMedianMs": 817,
+      "workerMedianMs": 195,
+      "reductionPercent": 76
+    }
+  ],
+  "accessibilityParity": true
+}
