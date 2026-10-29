@@ -144,5 +144,30 @@ class DriverTests(unittest.TestCase):
             lock.assert_called_once_with(device)
             run.assert_called_once_with(['xcrun', 'simctl', 'shutdown', device], check=True, capture_output=True, timeout=20)
 
+    def test_coordinate_mapping_and_pixel_auto_detection(self):
+        device = '8AA89128-E540-44BB-82FD-43999DDC6838'
+        fake_sim = driver.Simulator.__new__(driver.Simulator)
+        fake_sim.device = device
+        fake_sim.get_screen = lambda: {'width': 400, 'height': 800, 'scale': 3.0}
+        tapped = []
+        fake_sim.tap = lambda x, y, dur=None: tapped.append((x, y, dur))
+        with patch.object(driver, 'device_lock', return_value=contextlib.nullcontext()), patch.object(driver, 'reservation_path') as res, patch.object(driver, 'Simulator', return_value=fake_sim):
+            res.return_value.exists.return_value = False
+            # Standard screen point
+            res1 = driver.dispatch({'action': 'tap', 'deviceId': device, 'x': 200, 'y': 400})
+            self.assertTrue(res1['executed'])
+            self.assertEqual(tapped[-1], (200, 400, None))
+            # Screenshot pixels with auto-detection (x=600 > 400, y=1200 > 800)
+            res2 = driver.dispatch({'action': 'tap', 'deviceId': device, 'x': 600, 'y': 1200})
+            self.assertTrue(res2['executed'])
+            self.assertEqual(tapped[-1], (200.0, 400.0, None))
+            self.assertEqual(res2['coordinateMapping']['tappedPoints'], {'x': 200.0, 'y': 400.0})
+            # Explicit coordinateSpace='pixels'
+            res3 = driver.dispatch({'action': 'tap', 'deviceId': device, 'x': 300, 'y': 600, 'coordinateSpace': 'pixels'})
+            self.assertEqual(tapped[-1], (100.0, 200.0, None))
+            # Relative coordinateSpace [0..1]
+            res4 = driver.dispatch({'action': 'tap', 'deviceId': device, 'x': 0.5, 'y': 0.25, 'coordinateSpace': 'relative'})
+            self.assertEqual(tapped[-1], (200.0, 200.0, None))
+
 
 unittest.main()

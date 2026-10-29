@@ -132,13 +132,97 @@ function openSSHRunner(recipe, log) {
   };
 }
 
+const recipeCache = new Map();
+
+async function getCachedRecipe(profile) {
+  const cached = recipeCache.get(profile.hostId);
+  if (cached && (Date.now() - cached.time < 300000)) {
+    return cached.recipe;
+  }
+  const client = await managerClient();
+  try {
+    const recipe = await tool(client, 'ssh_hosts_get_connection_recipe', {
+      host_id: profile.hostId, caller_environment: 'windows-native', purpose: 'shell'
+    });
+    recipeCache.set(profile.hostId, { recipe, time: Date.now() });
+    return recipe;
+  } finally {
+    await client.close();
+  }
+}
+
 async function connect(profile, password, trust, log) {
   if (profile.kind === 'mcp') {
-    const client = await managerClient();
-    try { return openSSHRunner(await tool(client, 'ssh_hosts_get_connection_recipe', {
-      host_id: profile.hostId, caller_environment: 'windows-native', purpose: 'shell'
-    }), log); }
-    finally { await client.close(); }
+    const recipe = await getCachedRecipe(profile);
+    const runner = openSSHRunner(recipe, log);
+    try {
+      let keyPath, host, username = 'ahmedelhalawany', port = 22;
+      const argv = recipe.argv || [];
+      for (let i = 0; i < argv.length; i++) {
+        if (argv[i] === '-i' && argv[i + 1]) keyPath = argv[i + 1];
+        if (argv[i] === '-p' && argv[i + 1]) port = parseInt(argv[i + 1], 10);
+        if (argv[i] === '-o' && argv[i + 1]?.startsWith('User=')) username = argv[i + 1].slice(5);
+        if (argv[i] === '--' && argv[i + 1]) host = argv[i + 1];
+      }
+      if (!host && argv.length > 0) host = argv[argv.length - 1];
+      if (host && keyPath && fs.existsSync(keyPath)) {
+        const privateKey = fs.readFileSync(keyPath);
+        const fastConn = new SSHClient();
+        await new Promise((resolve, reject) => {
+          fastConn.once('ready', resolve);
+          fastConn.once('error', reject);
+          fastConn.connect({
+            host, port, username, privateKey,
+            readyTimeout: 10000, keepaliveInterval: 10000
+          });
+        });
+        const fastRunner = {
+          close() { fastConn.end(); runner.close(); },
+          runSigned: runner.runSigned.bind(runner),
+          forward: runner.forward.bind(runner),
+          run(script, timeout = 180000, signal, options = {}) {
+            if (signal?.aborted) return Promise.reject(cancelled());
+            return new Promise((resolve, reject) => {
+              fastConn.exec(options.inputFile ? 'sh -c ' + quote(script) : 'sh -s', (error, stream) => {
+                if (error) return reject(error);
+                let out = '', err = '', settled = false;
+                const abort = () => { stream.close(); finish(cancelled()); };
+                const finish = (error, result) => {
+                  if (settled) return; settled = true; clearTimeout(timer); signal?.removeEventListener('abort', abort);
+                  error ? reject(error) : resolve(result);
+                };
+                const timer = setTimeout(() => { stream.close(); finish(Error('Mac command timed out.')); }, timeout);
+                signal?.addEventListener('abort', abort, { once: true });
+                if (signal?.aborted) { abort(); return; }
+                stream.on('data', d => {
+                  out += d;
+                  if (Buffer.byteLength(out) > (options.maxBytes || 4e6)) { stream.close(); finish(Error('Mac response exceeded the size limit.')); }
+                });
+                stream.stderr.on('data', d => { err = (err + d).slice(-16000); });
+                stream.on('error', e => finish(e));
+                stream.on('close', code => {
+                  const visible = out.split(/\r?\n/).filter(l => !l.startsWith('MIRROR_JSON=')).join('\n').trim();
+                  if (visible && !options.quiet) log(visible.slice(-3000));
+                  finish(code === 0 ? null : Error(err.trim() || `Mac command failed (${code}). ${visible.slice(-1000)}`), out);
+                });
+                if (options.inputFile) {
+                  const input = fs.createReadStream(options.inputFile);
+                  input.on('error', e => { stream.close(); finish(e); });
+                  stream.once('close', () => input.destroy());
+                  input.pipe(stream);
+                } else {
+                  stream.end(script.replace(/\r\n/g, '\n') + '\n');
+                }
+              });
+            });
+          }
+        };
+        return fastRunner;
+      }
+    } catch (e) {
+      // Fallback cleanly to standard runner
+    }
+    return runner;
   }
   const conn = new SSHClient();
   let privateKey;

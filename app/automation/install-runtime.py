@@ -87,7 +87,10 @@ def provision(args):
         try:
             if current.resolve().parent != ROOT.resolve() or current.resolve().name != bundle['bundleId']:
                 raise RuntimeError('Different runtime is active.')
-            verify(current, bundle)
+            vmarker = current / '.verified'
+            if not (vmarker.exists() and vmarker.read_text().strip() == bundle['manifestSha256']):
+                verify(current, bundle)
+                vmarker.write_text(bundle['manifestSha256'])
             health(current)
             return {'ok': True, 'ready': True, 'bundleId': bundle['bundleId']}
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):

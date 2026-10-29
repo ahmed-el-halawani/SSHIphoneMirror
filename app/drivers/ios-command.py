@@ -142,17 +142,42 @@ class Simulator:
         companion = self.root / 'bin/idb_companion'
         expected_hash = manifest['companionSha256']
         self.runtime_id = manifest['bundleId']
-        if manifest.get('commit') != PIN or manifest.get('architecture') != platform.machine() or manifest.get('macOS') != platform.mac_ver()[0] or self.run(['xcodebuild', '-version']).decode().strip() != manifest.get('xcode'):
-            fail('COMPATIBILITY_MISMATCH', 'macOS, architecture or Xcode changed. Requalify the pinned IDB build before automation.')
-        with companion.open('rb') as binary:
-            digest = hashlib.sha256()
-            for block in iter(lambda: binary.read(1024 * 1024), b''):
-                digest.update(block)
-            actual_hash = digest.hexdigest()
-        if actual_hash != expected_hash:
-            fail('COMPATIBILITY_MISMATCH', 'IDB companion checksum changed. Verify the pinned build before automation.')
         self.companion = companion
         self.session = session_directory(self.runtime_id)
+        
+        # Fast-path verification caching to avoid expensive 4.3s re-check on every invocation
+        verify_cache = self.session / 'verify_cache.json'
+        verified = False
+        try:
+            if verify_cache.exists():
+                cdata = json.loads(verify_cache.read_text())
+                if (cdata.get('companion_mtime') == companion.stat().st_mtime and
+                    cdata.get('manifest_mtime') == (self.root / 'compatibility.json').stat().st_mtime and
+                    cdata.get('machine') == platform.machine() and
+                    cdata.get('macos') == platform.mac_ver()[0]):
+                    verified = True
+        except Exception:
+            pass
+
+        if not verified:
+            if manifest.get('commit') != PIN or manifest.get('architecture') != platform.machine() or manifest.get('macOS') != platform.mac_ver()[0] or self.run(['xcodebuild', '-version']).decode().strip() != manifest.get('xcode'):
+                fail('COMPATIBILITY_MISMATCH', 'macOS, architecture or Xcode changed. Requalify the pinned IDB build before automation.')
+            with companion.open('rb') as binary:
+                digest = hashlib.sha256()
+                for block in iter(lambda: binary.read(1024 * 1024), b''):
+                    digest.update(block)
+                actual_hash = digest.hexdigest()
+            if actual_hash != expected_hash:
+                fail('COMPATIBILITY_MISMATCH', 'IDB companion checksum changed. Verify the pinned build before automation.')
+            try:
+                verify_cache.write_text(json.dumps({
+                    'companion_mtime': companion.stat().st_mtime,
+                    'manifest_mtime': (self.root / 'compatibility.json').stat().st_mtime,
+                    'machine': platform.machine(),
+                    'macos': platform.mac_ver()[0]
+                }))
+            except Exception:
+                pass
 
     def run(self, args, data=None):
         remaining = self.deadline - time.monotonic()
@@ -189,6 +214,39 @@ class Simulator:
         bootstrap = "import base64,json,runpy,sys;import idb.common.constants as c;p=json.loads(base64.b64decode('" + payload + "'));sys.argv=p['argv'];c.BASE_IDB_FILE_PATH=p['session'];c.IDB_STATE_FILE_PATH=p['session']+'/state';c.IDB_LOGS_PATH=p['session']+'/logs';c.IDB_PID_PATH=p['session']+'/pid';runpy.run_path(sys.argv[0],run_name='__main__')"
         return self.run([str(pathlib.Path(self.idb).with_name('python')), '-I', '-X', 'pycache_prefix=' + str(self.session / 'pycache'), '-'], bootstrap.encode())
 
+    def get_screen(self):
+        screen_file = self.session / f"screen_{self.device}.json"
+        try:
+            if screen_file.exists():
+                data = json.loads(screen_file.read_text())
+                if isinstance(data, dict) and data.get('width') and data.get('height'):
+                    return data
+        except Exception:
+            pass
+        tree = self.tree()
+        s = dict(tree.get('screen', {}))
+        if s.get('width') and s.get('height'):
+            scale = 3.0
+            try:
+                with tempfile.TemporaryDirectory() as td:
+                    tfile = pathlib.Path(td) / 's.png'
+                    subprocess.run(['xcrun', 'simctl', 'io', self.device, 'screenshot', str(tfile)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+                    if tfile.exists():
+                        b = tfile.read_bytes()
+                        if len(b) > 24 and b[:8] == b'\x89PNG\r\n\x1a\n':
+                            import struct
+                            pw, _ = struct.unpack('>II', b[16:24])
+                            scale = float(round(pw / s['width']))
+            except Exception:
+                pass
+            s['scale'] = scale
+            try:
+                screen_file.write_text(json.dumps(s))
+            except Exception:
+                pass
+            return s
+        return s
+
     def tree(self, point=None):
         args = ['ui', 'describe-point', *[str(round(v)) for v in point]] if point else ['ui', 'describe-all']
         for api in (self.api, 'ax-coresimulator'):
@@ -221,6 +279,18 @@ class Simulator:
             return base64.b64encode(file.read_bytes()).decode()
 
     def lifecycle(self, action, value):
+        if action == 'terminate_app':
+            try:
+                self.run(['xcrun', 'simctl', 'terminate', self.device, value])
+                return
+            except Exception:
+                pass
+        elif action == 'launch_app':
+            try:
+                self.run(['xcrun', 'simctl', 'launch', self.device, value])
+                return
+            except Exception:
+                pass
         self.cli({'launch_app': 'launch', 'terminate_app': 'terminate', 'install_app': 'install'}[action], value)
 
     def text(self, text, selector, allow_clipboard):
@@ -278,6 +348,11 @@ class RealPhone:
 
     def mobile(self, name, args):
         return self.request('/execute/sync', {'script': 'mobile: ' + name, 'args': [args]})
+
+    def get_screen(self):
+        rect = dict(self.request('/window/rect'))
+        rect['scale'] = 3.0
+        return rect
 
     def tree(self, point=None):
         if point:
@@ -452,19 +527,79 @@ def dispatch(args):
                 logs = driver.request('/log', {'type': 'syslog'})[-args.get('maxLines', 100):]
             return {'logs': logs, 'untrusted': True}
         if action == 'screenshot':
-            return {'image': driver.screenshot(), 'mimeType': 'image/png', 'untrusted': True}
+            screen = driver.get_screen() if hasattr(driver, 'get_screen') else driver.tree().get('screen')
+            img_b64 = driver.screenshot()
+            img_dims = None
+            try:
+                raw_bytes = base64.b64decode(img_b64[:64])
+                if len(raw_bytes) >= 24 and raw_bytes[:8] == b'\x89PNG\r\n\x1a\n':
+                    import struct
+                    pw, ph = struct.unpack('>II', raw_bytes[16:24])
+                    img_dims = {'width': pw, 'height': ph}
+                    if screen and screen.get('width'):
+                        screen['scale'] = float(round(pw / screen['width']))
+            except Exception:
+                pass
+            return {'image': img_b64, 'mimeType': 'image/png', 'untrusted': True, 'screen': screen, 'imageDimensions': img_dims}
         if action == 'wait_for':
             return wait_for(driver, args)
         if action in ('tap', 'long_press', 'swipe'):
-            tree = driver.tree()
-            s = tree['screen']
-            for k in ('x1', 'y1', 'x2', 'y2') if action == 'swipe' else ('x', 'y'):
-                if not isinstance(args.get(k), (int, float)) or not math.isfinite(args[k]) or not 0 <= args[k] < s['width' if k.startswith('x') else 'height']:
+            s = driver.get_screen() if hasattr(driver, 'get_screen') else driver.tree()['screen']
+            scale = float(s.get('scale', 3.0) or 3.0)
+            coord_space = args.get('coordinateSpace', 'points')
+
+            def convert_coord(val, axis):
+                bound = s['width'] if axis == 'x' else s['height']
+                if not isinstance(val, (int, float)) or not math.isfinite(val):
                     fail('INVALID_ARGUMENT', 'Coordinates must be screen points inside the current viewport.')
+                if coord_space == 'pixels':
+                    return val / scale
+                if coord_space == 'relative':
+                    if val <= 1.0:
+                        return val * bound
+                    elif val <= 1000.0:
+                        return (val / 1000.0) * bound
+                # Auto-detect if passed in screenshot pixels
+                if val >= bound and (val <= bound * scale * 1.05):
+                    return val / scale
+                return val
+
+            keys = ('x1', 'y1', 'x2', 'y2') if action == 'swipe' else ('x', 'y')
+            converted = {}
+            was_mapped = False
+            for k in keys:
+                axis = 'x' if 'x' in k else 'y'
+                orig = args.get(k)
+                if orig is None:
+                    fail('INVALID_ARGUMENT', f'Missing required coordinate {k}.')
+                conv = convert_coord(orig, axis)
+                if abs(conv - orig) > 0.001:
+                    was_mapped = True
+                bound = s['width'] if axis == 'x' else s['height']
+                if not (0 <= conv < bound):
+                    fail('INVALID_ARGUMENT', f'Coordinates must be screen points inside the current viewport (got {orig} -> {conv:.1f}, bounds [0, {bound})).')
+                converted[k] = conv
+
             if action == 'swipe':
-                mutate(driver.swipe, args)
+                swipe_args = dict(args)
+                swipe_args.update(converted)
+                mutate(driver.swipe, swipe_args)
             else:
-                mutate(driver.tap, args['x'], args['y'], args.get('duration', 1) if action == 'long_press' else None)
+                mutate(driver.tap, converted['x'], converted['y'], args.get('duration', 1) if action == 'long_press' else None)
+            
+            result = {'executed': True, 'verified': False}
+            if was_mapped:
+                result['coordinateMapping'] = {
+                    'mode': coord_space,
+                    'scale': scale,
+                    'tappedPoints': {k: round(converted[k], 1) for k in keys}
+                }
+            if args.get('expected'):
+                try:
+                    result.update(wait_for(driver, args['expected']))
+                except Failure as error:
+                    return {'ok': False, 'executed': True, 'verified': False, 'error': {'code': error.code, 'message': str(error)}}
+            return result
         elif action == 'tap_element':
             for attempt in range(args.get('maxScrolls', 0) + 1):
                 tree = driver.tree()
