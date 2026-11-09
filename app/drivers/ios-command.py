@@ -9,6 +9,7 @@ import os
 import pathlib
 import platform
 import re
+import secrets
 import stat
 import subprocess
 import sys
@@ -21,10 +22,13 @@ PIN = '1387b360a9dcad34573cb1d9f277e5a0eacfd804'
 LIMIT = 16 * 1024 * 1024
 EXECUTED = False
 STAGE = 'prepare'
+SNAPSHOTS = {}
+ACTIVE_DEVICE = None
 
 
 def mutate(operation, *args):
     global EXECUTED
+    SNAPSHOTS.pop(ACTIVE_DEVICE, None)
     EXECUTED = None
     result = operation(*args)
     EXECUTED = True
@@ -70,9 +74,15 @@ def resolve(tree, selector):
 
 
 def center(tree, node):
-    f, s = node.get('frame', {}), tree.get('screen', {})
     if node.get('enabled') is False or node.get('visible') is False:
         fail('ELEMENT_NOT_INTERACTABLE', 'Element is disabled or hidden.')
+    if node.get('type') in ('CheckBox', 'Switch'):
+        controls = [child for child in node.get('children', []) if child.get('type') == node['type']]
+        if len(controls) == 1:
+            node = controls[0]
+            if node.get('enabled') is False or node.get('visible') is False:
+                fail('ELEMENT_NOT_INTERACTABLE', 'Native control is disabled or hidden.')
+    f, s = node.get('frame', {}), tree.get('screen', {})
     if not all(isinstance(f.get(k), (int, float)) and math.isfinite(f[k]) for k in ('x', 'y', 'width', 'height')) or f['width'] <= 0 or f['height'] <= 0:
         fail('ELEMENT_NOT_INTERACTABLE', 'Element has no usable bounds.')
     x, y = f['x'] + f['width'] / 2, f['y'] + f['height'] / 2
@@ -259,10 +269,24 @@ class Simulator:
         return s
 
     def tree(self, point=None):
+        for attempt in range(2):
+            try:
+                return self.read_tree(point)
+            except Failure as error:
+                if attempt or error.code not in ('DRIVER_ERROR', 'INVALID_TREE') or self.deadline - time.monotonic() <= 0.1:
+                    raise
+                # Accessibility acquisition is read-only; reconnect/re-read without replaying input.
+                time.sleep(0.1)
+
+    def read_tree(self, point=None):
         args = ['ui', 'describe-point', *[str(round(v)) for v in point]] if point else ['ui', 'describe-all']
         for api in (self.api, 'ax-coresimulator'):
             try:
                 value = json.loads(self.cli(*args, '--api', api, '--client-type', 'xctest', '--format', 'complete'))
+                # AX can expose the new app before its screen geometry is ready after launch.
+                if not point and isinstance(value, dict) and 'elements' in value and not value.get('screen') and not value.get('truncated'):
+                    time.sleep(min(0.1, max(0, self.deadline - time.monotonic())))
+                    value = json.loads(self.cli(*args, '--api', api, '--client-type', 'xctest', '--format', 'complete'))
                 if not isinstance(value, dict) or 'elements' not in value or (not point and not value.get('screen')) or value.get('truncated'):
                     fail('INVALID_TREE', 'Accessibility returned an incomplete tree.')
                 self.api = api
@@ -324,7 +348,27 @@ class Simulator:
 
     def hit_test(self, node, x, y):
         hit = self.tree((x, y))
-        selected = [n for n in nodes(hit) if node.get('identifier') and n.get('identifier') == node['identifier'] or not node.get('identifier') and node.get('label') and n.get('label') == node['label'] and n.get('type') == node.get('type')]
+        # AX can return the button's text/image child instead of its owning button.
+        selected = [n for n in nodes(hit) for intended in nodes(node)
+                    if n.get('frame') == intended.get('frame') and n.get('type') == intended.get('type')
+                    and (intended.get('identifier') and n.get('identifier') == intended['identifier']
+                         or not intended.get('identifier') and intended.get('label') and n.get('label') == intended['label']
+                         or not intended.get('identifier') and not intended.get('label') and intended.get('type') in ('CheckBox', 'Switch', 'Slider') and n.get('value') == intended.get('value'))]
+        if not selected and node.get('subrole') == 'AXSwitch':
+            controls = [n for n in nodes(node) if n.get('subrole') == 'AXSwitch']
+            native = min(controls, key=lambda n: n['frame']['width'] * n['frame']['height'])
+            f = native['frame']
+            # IDB's point tree exposes the native switch thumb as anonymous Groups.
+            for candidate in nodes(hit):
+                h = candidate.get('frame', {})
+                if (candidate.get('type') == 'Group' and not candidate.get('label') and not candidate.get('identifier')
+                        and node.get('pid') is not None and candidate.get('pid') == node['pid']
+                        and h.get('x', -1) >= f['x'] and h.get('y', -1) >= f['y']
+                        and h.get('x', -1) + h.get('width', 0) <= f['x'] + f['width']
+                        and h.get('y', -1) + h.get('height', 0) <= f['y'] + f['height']
+                        and h.get('x', -1) <= x < h.get('x', -1) + h.get('width', 0)
+                        and h.get('y', -1) <= y < h.get('y', -1) + h.get('height', 0)):
+                    selected.append(candidate)
         if not selected:
             fail('STALE_ELEMENT', 'The target moved or is blocked. Inspect the screen again.')
 
@@ -406,7 +450,7 @@ class RealPhone:
         return 'wda-send-keys'
 
 
-def wait_for(driver, args):
+def wait_for(driver, args, capture=False):
     while True:
         try:
             tree = driver.tree()
@@ -426,15 +470,161 @@ def wait_for(driver, args):
                 raise
             found = False
         if found != (args.get('state') == 'absent'):
-            return {'verified': True}
+            return {'verified': True, **({'tree': tree} if capture else {})}
         remaining = driver.deadline - time.monotonic()
         if remaining <= 0:
             fail('TIMEOUT', 'Expected UI state was not observed before the deadline.')
         time.sleep(min(0.1, remaining))
 
 
+def compact_rows(tree):
+    rows = []
+    for index, node in enumerate(nodes(redact(tree))):
+        # Transient scroll indicators are not content targets and can fade between calls.
+        if node.get('type') == 'Slider' and 'scroll bar' in str(node.get('label', '')).lower():
+            continue
+        frame, screen = node.get('frame', {}), tree.get('screen', {})
+        if node.get('visible') is False or not all(isinstance(frame.get(k), (int, float)) and math.isfinite(frame[k]) for k in ('x', 'y', 'width', 'height')):
+            continue
+        if frame['width'] <= 0 or frame['height'] <= 0 or not (0 <= frame['x'] + frame['width'] / 2 < screen.get('width', 0) and 0 <= frame['y'] + frame['height'] / 2 < screen.get('height', 0)):
+            continue
+        if not any(node.get(k) not in (None, '') for k in ('identifier', 'label', 'value')):
+            continue
+        rows.append({**{k: node[k] for k in ('type', 'identifier', 'label', 'value', 'enabled', 'frame', 'pid') if k in node}, '_index': index})
+    if len(rows) > 500:
+        fail('OUTPUT_TOO_LARGE', 'Compact snapshot exceeds 500 visible elements; use a screenshot or exact selector.')
+    return rows
+
+
+def row_key(row):
+    return json.dumps(row, sort_keys=True, ensure_ascii=False, separators=(',', ':'))
+
+
+def snapshot_result(device, tree, previous=None, settled=None, api=None):
+    rows = compact_rows(tree)
+    old = previous or {}
+    by_key = {}
+    for ref, row in old.get('refs', {}).items():
+        by_key.setdefault(row_key(row), []).append(ref)
+    refs, lines = {}, []
+    nonce = secrets.token_hex(4)
+    for index, row in enumerate(rows):
+        available = by_key.get(row_key(row), [])
+        ref = available.pop(0) if available else '@e' + str(index + 1) + '~' + nonce
+        refs[ref] = row
+        if previous and ref in old.get('refs', {}):
+            continue
+        fields = [ref, '[' + str(row.get('type', 'Element')) + ']']
+        for key, prefix in (('identifier', 'id='), ('label', ''), ('value', 'value=')):
+            if row.get(key) not in (None, '') and not (key == 'value' and row[key] == row.get('label')):
+                value = row[key]
+                if isinstance(value, str) and len(value) > 200:
+                    value = value[:200] + '…[truncated]'
+                fields.append(prefix + json.dumps(value, ensure_ascii=False))
+        if row.get('enabled') is False:
+            fields.append('disabled')
+        lines.append(('+ ' if previous else '') + ' '.join(fields))
+    removed = [ref for ref in old.get('refs', {}) if ref not in refs]
+    lines = ['- ' + ref for ref in removed] + lines
+    if len('\n'.join(lines).encode('utf-8')) > 32768:
+        fail('OUTPUT_TOO_LARGE', 'Compact snapshot exceeds 32 KiB; use an exact selector or screenshot.')
+    snapshot_id = secrets.token_hex(8)
+    SNAPSHOTS[device] = {'id': snapshot_id, 'refs': refs, 'rows': rows, 'screen': tree['screen'], 'time': time.monotonic(), 'api': api}
+    result = {'snapshotId': snapshot_id, 'mode': 'diff' if previous else 'full', 'screen': tree['screen'], 'text': '\n'.join(lines), 'elements': len(rows), 'untrusted': True}
+    if previous:
+        result['baseSnapshotId'] = old['id']
+    if settled is not None:
+        result['settled'] = settled
+    return result
+
+
+def settled_tree(driver, tree=None):
+    tree = driver.tree() if tree is None else tree
+    # Two matching semantic/geometry observations; this is UI stability, not proof of intent.
+    end = min(driver.deadline, time.monotonic() + 2)
+    key = row_key({'rows': compact_rows(tree), 'screen': tree['screen']})
+    while time.monotonic() + 0.12 < end:
+        time.sleep(0.12)
+        current = driver.tree()
+        current_key = row_key({'rows': compact_rows(current), 'screen': current['screen']})
+        if key == current_key:
+            return current, True
+        tree, key = current, current_key
+    return tree, False
+
+
+def settled_snapshot(driver, device, previous, expected=None):
+    try:
+        initial = wait_for(driver, expected, capture=True)['tree'] if expected else None
+        tree, settled = settled_tree(driver, initial)
+        return {'verified': bool(expected), 'snapshot': snapshot_result(device, tree, previous, settled, getattr(driver, 'api', None))}
+    except Failure as error:
+        # Preserve acknowledgement when a post-action read fails; never invite an action replay.
+        return {'ok': False, 'executed': True, 'verified': False, 'error': {'code': error.code, 'message': str(error)}}
+
+
+def compact_action(driver, device, args):
+    if args.get('operation') not in ('tap', 'fill', 'long_press', 'scroll'):
+        fail('INVALID_ARGUMENT', 'Unknown compact operation.')
+    previous = SNAPSHOTS.get(device)
+    if not previous or args.get('snapshotId') != previous['id'] or time.monotonic() - previous['time'] > 60:
+        fail('STALE_SNAPSHOT', 'Snapshot expired or belongs to another connection. Read ios_snapshot before acting.')
+    if previous.get('api') in ('ax', 'ax-coresimulator'):
+        driver.api = previous['api']
+    tree = driver.tree()
+    if compact_rows(tree) != previous['rows'] or tree['screen'] != previous['screen']:
+        SNAPSHOTS.pop(device, None)
+        fail('STALE_SNAPSHOT', 'The UI changed since the snapshot; no input was sent. Read ios_snapshot.')
+    operation = args['operation']
+    if operation == 'scroll':
+        direction = args.get('direction')
+        if direction not in ('up', 'down'):
+            fail('INVALID_ARGUMENT', 'Scroll direction must be up or down.')
+        s = tree['screen']
+        y1, y2 = (0.75, 0.3) if direction == 'down' else (0.3, 0.75)
+        mutate(driver.swipe, {'x1': s['width'] * 0.5, 'x2': s['width'] * 0.5, 'y1': s['height'] * y1, 'y2': s['height'] * y2, 'duration': 1})
+    else:
+        row = previous['refs'].get(args.get('ref'))
+        if not row:
+            fail('STALE_ELEMENT', 'Ref is not in the latest snapshot; no input was sent.')
+        current = list(nodes(tree))
+        index = row['_index']
+        if index >= len(current) or any(current[index].get(k) != v for k, v in row.items() if k != '_index'):
+            fail('STALE_ELEMENT', 'The target changed or moved; no input was sent. Read ios_snapshot.')
+        row = current[index]
+        x, y = center(tree, row)
+        try:
+            driver.hit_test(row, x, y)
+        except Failure as error:
+            if error.code != 'STALE_ELEMENT' or row.get('type') != 'Button' or y >= tree['screen']['height'] / 3 or not row.get('identifier'):
+                raise
+            selector = {'identifier': row['identifier'], 'type': row.get('type')}
+            resolve(tree, selector)
+            s = tree['screen']
+            # A fixed header can cover an AX-visible row; reposition before the first tap.
+            mutate(driver.swipe, {'x1': s['width'] * 0.5, 'x2': s['width'] * 0.5, 'y1': s['height'] * 0.5, 'y2': s['height'] * 0.65, 'duration': 0.3})
+            time.sleep(min(0.15, max(0, driver.deadline - time.monotonic())))
+            tree = driver.tree()
+            row = resolve(tree, selector)
+            x, y = center(tree, row)
+            driver.hit_test(row, x, y)
+        if operation == 'fill':
+            if 'textfield' not in str(row.get('type', '')).lower().replace(' ', '') and 'textview' not in str(row.get('type', '')).lower():
+                fail('ELEMENT_NOT_INTERACTABLE', 'Fill requires a text field or text view.')
+            text = args.get('text')
+            if not isinstance(text, str) or len(text) > 10000 or '\0' in text:
+                fail('INVALID_ARGUMENT', 'Fill text must contain at most 10000 characters and no NUL.')
+            mutate(driver.cli, 'ui', 'set-value', round(x), round(y), '--api', driver.api, '--value', text)
+        else:
+            hold = args.get('duration', 1) if operation == 'long_press' else (0.1 if row.get('subrole') == 'AXSwitch' else None)
+            mutate(driver.tap, x, y, hold)
+    return {'executed': True, **settled_snapshot(driver, device, previous, args.get('expected'))}
+
+
 def dispatch(args):
+    global ACTIVE_DEVICE
     action, device = args['action'], args.get('deviceId', '')
+    ACTIVE_DEVICE = device
     if action == 'list_devices':
         data = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json'], timeout=20))
         devices = [{**d, 'deviceId': d['udid'], 'kind': 'simulator', 'runtime': runtime} for runtime, group in data['devices'].items() for d in group]
@@ -498,7 +688,7 @@ def dispatch(args):
         if action == 'recover_viewer':
             reservation.unlink(missing_ok=True)
             return {'released': True}
-        if reservation.exists() and action not in ('get_capabilities', 'get_ui_tree', 'screenshot', 'wait_for', 'get_device_logs'):
+        if reservation.exists() and action not in ('get_capabilities', 'get_ui_tree', 'snapshot', 'screenshot', 'wait_for', 'get_device_logs'):
             if json.loads(reservation.read_text()).get('handoff') is True:
                 fail('VIEWER_HANDOFF_REQUIRED', 'Switch the attached viewer to Watch agent before sending input.')
             fail('DEVICE_BUSY', 'A manual viewer owns device control. In iPhone Mirror choose View > Watch agent (read-only) to watch while the agent controls the device, or detach the viewer.')
@@ -528,9 +718,16 @@ def dispatch(args):
                 fail('SESSION_START_FAILED', 'Real iPhone startup failed: ' + (detail or 'check signing, tools and the Mac Appium log.'))
             return {'executed': True, 'verified': True}
         driver = RealPhone(device, deadline) if device.startswith('real:') else Simulator(device, deadline)
+        if action in ('snapshot', 'act'):
+            if device.startswith('real:'):
+                fail('UNSUPPORTED', 'Compact sessions currently require a Simulator worker; use existing iOS tools for real phones.')
+            if action == 'snapshot':
+                tree, settled = settled_tree(driver)
+                return {'snapshot': snapshot_result(device, tree, settled=settled, api=driver.api)}
+            return compact_action(driver, device, args)
         if action == 'get_capabilities':
             tree = driver.tree()
-            return {'backend': tree.get('backend'), 'screen': tree['screen'], 'runtimeId': getattr(driver, 'runtime_id', None), 'capabilities': ['screenshot', 'ui_tree', 'tap', 'tap_element', 'swipe', 'type_text', 'wait_for', 'launch_app', 'terminate_app', 'install_app', 'long_press'], 'unicode': 'selector-based set-value; explicit clipboard fallback on Simulator', 'realDeviceLimit': 1 if device.startswith('real:') else None}
+            return {'backend': tree.get('backend'), 'screen': tree['screen'], 'runtimeId': getattr(driver, 'runtime_id', None), 'capabilities': ['screenshot', 'ui_tree', 'tap', 'tap_element', 'swipe', 'type_text', 'wait_for', 'launch_app', 'terminate_app', 'install_app', 'long_press'] + ([] if device.startswith('real:') else ['snapshot', 'act']), 'unicode': 'selector-based set-value; explicit clipboard fallback on Simulator', 'realDeviceLimit': 1 if device.startswith('real:') else None}
         if action == 'get_ui_tree':
             return {'tree': redact(driver.tree()), 'untrusted': True}
         if action == 'get_device_logs':
@@ -631,7 +828,7 @@ def dispatch(args):
                     blocked_at_top = error.code == 'STALE_ELEMENT' and y < s['height'] / 3
                     mutate(driver.swipe, {'x1': s['width'] * 0.5, 'x2': s['width'] * 0.5, 'y1': s['height'] * (0.5 if blocked_at_top else 0.75), 'y2': s['height'] * (0.65 if blocked_at_top else 0.3), 'duration': 1})
             if isinstance(driver, Simulator):
-                mutate(driver.tap, x, y)
+                mutate(driver.tap, x, y, 0.1 if node.get('subrole') == 'AXSwitch' else None)
             else:
                 mutate(driver.request, '/element/' + driver.element(args['selector']) + '/click', {})
         elif action == 'type_text':

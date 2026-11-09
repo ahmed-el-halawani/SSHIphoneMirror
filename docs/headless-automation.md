@@ -108,6 +108,36 @@ ELECTRON_RUN_AS_NODE = '1'
 
 ## Tool contract
 
+### Compact Simulator workflow
+
+Use `ios_snapshot` to get settled visible UI text, element refs and a `snapshotId`. Initial snapshots use the same bounded matching-observation check as post-action snapshots. Use `ios_act` with that snapshot ID and an exact ref for `tap`, `fill`, or `long_press`. Use `operation: "scroll"` with `direction: "up"` or `"down"` to scroll. These two tools currently require a Simulator; the existing tools continue to serve both Simulator and real iPhone.
+
+An action reads fresh UI state, checks visible semantics and geometry against the snapshot, revalidates the target's exact current attributes and bounds, and performs a point hit test. It dispatches once while holding the existing device lock. External text/value changes also invalidate the snapshot: a changed status or counter may mean another actor already performed the requested operation. A snapshot expires after 60 seconds, a worker reconnect, a new full snapshot, or a mutation through another tool. An old snapshot ID, changed UI, or removed ref fails before dispatch. Refs are addresses for the observed UI, not reusable selectors or authorization tokens.
+
+Point hit testing accepts a matching descendant from the current target subtree, because AX can return a navigation button's text child. Native SwiftUI switches use their actual control bounds and a qualified 100 ms touch rather than the inert label-row center. The native switch thumb can appear as an anonymous Group in IDB's point tree; that narrow case requires a matching app process and bounds inside the actual switch. A uniquely identified button covered by a fixed header can be repositioned once and revalidated before its first tap. This positioning is a real scroll mutation and is not a replay of failed input.
+
+Transient accessibility acquisition errors permit one bounded repeat of the read, within the original deadline. Input is never repeated by that recovery path. References retain the AX backend that produced their snapshot. Compact scrolling uses a controlled one-second gesture to reduce fling overshoot. For a known off-screen exact selector, the existing `ios_tap_element` with `maxScrolls` remains available; a mutation through a legacy tool requires a new compact snapshot afterward.
+
+Successful actions return a compact diff. Apply `- @ref` removals and `+ @ref ...` additions to the previous view. Unchanged refs remain available with the **new** snapshot ID. `baseSnapshotId` names the required baseline. Call `ios_snapshot` for a full view if the baseline is missing. No raw tree or screenshot is included in normal compact results.
+
+The returned `settled` flag means two matching semantic/geometry observations separated by at least 120 ms. Stabilization uses a bounded two-second observation window, subject to the operation deadline and the current read completing. It does not prove the intended behavior. Supply `expected` to assert an exact UI postcondition; only that check sets `verified: true`. Delayed operations should use `expected` rather than treating a stable loading screen as completion.
+
+If input succeeds but its postcondition or snapshot read fails, the result preserves `executed: true`. A lost input acknowledgement remains `OUTCOME_UNKNOWN`. Neither path replays input. A stale snapshot refusal is safe to follow with a fresh read because input was not dispatched. A visual overlay absent from AX can still block a tap even after a hit test; an explicit postcondition and a screenshot remain necessary for such apps.
+
+Snapshot state lives only in the connection-scoped worker memory. Secure subtrees are redacted before compaction. Visible label/value/identifier previews are capped at 200 characters with an explicit truncation marker; exact matching still uses the full internal values. A snapshot is bounded to 500 visible elements and 32 KiB of rendered text. The existing full-tree tool remains available for diagnostics. All app text is untrusted data.
+
+```json
+{"name":"ios_snapshot","arguments":{"hostId":"mac","deviceId":"SIMULATOR_UUID"}}
+```
+
+Use the real `snapshotId` and ref from that response:
+
+```json
+{"name":"ios_act","arguments":{"hostId":"mac","deviceId":"SIMULATOR_UUID","snapshotId":"0123456789abcdef","operation":"tap","ref":"@e6~12345678","expected":{"selector":{"identifier":"counter_label"},"value":"Count: 1"}}}
+```
+
+For the upstream reference and implementation boundary, see [agent-device-reference.md](agent-device-reference.md). For the opt-in fixture run, use `tests/build-compact-fixture.sh` on the Mac, install its `com.evaluation.CompactFixture` app on the chosen Simulator, then run `tests/live-compact.mjs` on Windows with explicit `MIRROR_TEST_HOST` and `MIRROR_TEST_DEVICE`. `MIRROR_TEST_ROUNDS` controls counter repetitions. Results go to the ignored `.research/` folder. The harness tests actual MCP stdio and SSH without auto-opening the desktop viewer.
+
 `app/mcp/tools.mjs` is the executable contract: strict Zod schemas generate MCP discovery schemas and validate shared-controller callers. Device IDs are Simulator UUIDs or `real:UDID`. Touch coordinates are current screen **points**, never screenshot pixels; Simulator HID rounds to integer points. Read the current capabilities after rotation. The driver rejects coordinates outside the current viewport.
 
 Read tools: `ios_list_hosts`, `ios_list_devices`, `ios_get_capabilities`, `ios_screenshot`, `ios_get_ui_tree`, `ios_wait_for`, `ios_get_device_logs`.

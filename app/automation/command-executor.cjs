@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { quote } = require('../core.cjs');
 const source = fs.readFileSync(path.join(__dirname, '../drivers/ios-command.py'), 'utf8');
-const MUTATIONS = new Set(['tap', 'tap_element', 'swipe', 'type_text', 'launch_app', 'terminate_app', 'install_app', 'long_press', 'start_session', 'shutdown_simulator']);
+const MUTATIONS = new Set(['act', 'tap', 'tap_element', 'swipe', 'type_text', 'launch_app', 'terminate_app', 'install_app', 'long_press', 'start_session', 'shutdown_simulator']);
 function scriptFor(action, args) {
   const payload = Buffer.from(JSON.stringify({ action, ...args })).toString('base64');
   return `/usr/bin/python3 - <<'IPHONE_MIRROR_PY'\nimport sys\nsys.argv.append(${quote(payload)})\n${source}\nIPHONE_MIRROR_PY\n`;

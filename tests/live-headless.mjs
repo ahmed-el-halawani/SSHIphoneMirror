@@ -27,7 +27,7 @@ const wait = (identifier, value) => call('wait_for', { selector: { identifier },
 const reset = async () => { await call('terminate_app', { bundleId: 'com.evaluation.TestFixture' }); await call('launch_app', { bundleId: 'com.evaluation.TestFixture' }); };
 try {
   await client.connect(transport);
-  assert((await client.listTools()).tools.length === 16);
+  assert((await client.listTools()).tools.length === 18);
   const hosts = await client.callTool({ name: 'ios_list_hosts', arguments: {} });
   assert(hosts.structuredContent.hosts.some(h => h.hostId === hostId));
   const devices = await client.callTool({ name: 'ios_list_devices', arguments: { hostId } });

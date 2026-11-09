@@ -4,6 +4,8 @@ Open **Start-App.cmd**, or the packaged **release/win-unpacked/iPhone Mirror.exe
 
 Simulator and real-iPhone automation is available through a standalone MCP server. Agent use opens the desktop in Watch agent mode; closing the window disconnects video to the tray while automation continues. See [setup, tool contracts and recovery](docs/headless-automation.md) and the [validation report](docs/automation-validation.md). Use **MCP Setup** in the top bar for one-click Claude Code, Codex and OpenCode registration, or copy the client-specific manual configuration. Start a source server with `npm run mcp`. Simulator setup automatically installs the bundled Python/IDB runtime on the qualified Intel macOS 15.8.1 / Xcode 26.3 Mac; no target-side build or package download is needed. Hosts are read-only until control is enabled in the separate automation configuration.
 
+The compact Simulator MCP workflow adds `ios_snapshot` and `ios_act`: settled UI refs, fresh-state validation, and compact post-action diffs. The [9 November validation report](docs/compact-validation-2026-11-09.md) records live functional coverage, token counts and paired timings; the [tool guide](docs/headless-automation.md#compact-simulator-workflow) describes its contracts.
+
 ## Automatic GitHub releases
 
 Every push to `main` runs `.github/workflows/windows-release.yml` on a Windows runner. It selects the next stable patch version, updates package/lock versions only in the build workspace, installs locked dependencies, runs the tests, installs the checksum-verified Electron runtime, and builds the NSIS Windows installer. A GitHub Release is published only after its installer EXE has uploaded successfully.

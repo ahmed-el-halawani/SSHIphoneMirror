@@ -1,0 +1,168 @@
+{
+  "date": "2026-11-09T19:51:51.801Z",
+  "deviceId": "0D0A7A84-BE10-4D2D-9186-E20BB14D3AF0",
+  "fixture": "com.evaluation.CompactFixture",
+  "sourceSha256": {
+    "app/drivers/ios-command.py": "1e3defb57fd663fd93c9893040db788417b7a54ba5194da21e38d78af9ad734f",
+    "app/mcp/tools.mjs": "4899556a0da607ae1309cd19389e4e7b9bfa7b34b27b258e02f210788a1ba685",
+    "app/automation/command-executor.cjs": "e899e4870c594c719e0aed8e347e9d12bd5649020125f1abd05f44d682ffdd29",
+    "app/mcp/server.mjs": "516a0123fdd212f90a96496bf65bc4d004e47159aa5cc12131eb774babfc40b3"
+  },
+  "checks": [
+    "baseline 10 first-attempt counter actions",
+    "compact 10 first-attempt counter actions",
+    "compact 10 first-attempt counter actions",
+    "baseline 10 first-attempt counter actions",
+    "Unicode fill and submit",
+    "stale snapshot refused without duplicate tap",
+    "delayed async completion verified",
+    "long list scroll and first-attempt row selection",
+    "ten first-attempt toggle actions",
+    "secure input redacted and correct length submitted",
+    "ten duplicate-label actions select the correct identifier",
+    "disabled target refused without input",
+    "long press",
+    "modal sheet open and close",
+    "system alert confirm"
+  ],
+  "tokenizer": "cl100k_base",
+  "tokenScope": "MCP text content and JSON tool arguments; excludes model reasoning, transport framing and client-specific schema conversion",
+  "groups": [
+    {
+      "mode": "baseline",
+      "rounds": 10,
+      "wallMs": 23414,
+      "calls": 20,
+      "responseBytes": 858016,
+      "corpusStart": 6,
+      "corpusEnd": 26,
+      "actionMs": [
+        1738,
+        1487,
+        1513,
+        1523,
+        1330,
+        1481,
+        1290,
+        1810,
+        1518,
+        1628
+      ],
+      "responseTextTokens": 110448,
+      "requestJsonTokens": 1660,
+      "medianCycleMs": 2356.0,
+      "p95CycleMs": 2680
+    },
+    {
+      "mode": "compact",
+      "rounds": 10,
+      "wallMs": 23703,
+      "calls": 11,
+      "responseBytes": 14669,
+      "corpusStart": 29,
+      "corpusEnd": 40,
+      "actionMs": [
+        2372,
+        2101,
+        2207,
+        2086,
+        2287,
+        2189,
+        2213,
+        2351,
+        2135,
+        2225
+      ],
+      "responseTextTokens": 2435,
+      "requestJsonTokens": 1222,
+      "medianCycleMs": 2210.0,
+      "p95CycleMs": 2372
+    },
+    {
+      "mode": "compact",
+      "rounds": 10,
+      "wallMs": 25381,
+      "calls": 11,
+      "responseBytes": 14669,
+      "corpusStart": 43,
+      "corpusEnd": 54,
+      "actionMs": [
+        3461,
+        2351,
+        2249,
+        2274,
+        2123,
+        1969,
+        2165,
+        2237,
+        2475,
+        2357
+      ],
+      "responseTextTokens": 2445,
+      "requestJsonTokens": 1222,
+      "medianCycleMs": 2261.5,
+      "p95CycleMs": 3461
+    },
+    {
+      "mode": "baseline",
+      "rounds": 10,
+      "wallMs": 22873,
+      "calls": 20,
+      "responseBytes": 858016,
+      "corpusStart": 57,
+      "corpusEnd": 77,
+      "actionMs": [
+        1596,
+        1669,
+        1395,
+        1343,
+        1471,
+        1371,
+        1561,
+        1306,
+        1372,
+        1594
+      ],
+      "responseTextTokens": 110448,
+      "requestJsonTokens": 1660,
+      "medianCycleMs": 2264.0,
+      "p95CycleMs": 2542
+    }
+  ],
+  "validationRuns": {
+    "counterBenchmarkRecordedAt": "2026-11-09T19:41:41.861Z",
+    "correctedUtf8FunctionalRecordedAt": "2026-11-09T19:51:51.801Z",
+    "identicalProductionSourceHashes": true
+  },
+  "baseline": {
+    "rounds": 20,
+    "wallMs": 46287,
+    "calls": 40,
+    "responseBytes": 1716032,
+    "responseTextTokens": 220896,
+    "requestJsonTokens": 3320,
+    "meanCycleMsIncludingInitialSnapshot": 2314.3
+  },
+  "compact": {
+    "rounds": 20,
+    "wallMs": 49084,
+    "calls": 22,
+    "responseBytes": 29338,
+    "responseTextTokens": 4880,
+    "requestJsonTokens": 2444,
+    "meanCycleMsIncludingInitialSnapshot": 2454.2
+  },
+  "reductionsPercent": {
+    "wallMs": -6.0,
+    "calls": 45.0,
+    "responseBytes": 98.3,
+    "responseTextTokens": 97.8,
+    "requestJsonTokens": 26.4
+  },
+  "newToolSchemaJsonTokens": 768,
+  "successfulCompactActions": 61,
+  "expectedRefusals": [
+    "STALE_SNAPSHOT",
+    "ELEMENT_NOT_INTERACTABLE"
+  ]
+}

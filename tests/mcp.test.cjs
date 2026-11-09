@@ -11,7 +11,7 @@ test('standalone MCP negotiates stdio, lists tools, returns structured results a
   try {
     await client.connect(transport);
     const { tools } = await client.listTools();
-    assert.equal(tools.length, 16);
+    assert.equal(tools.length, 18);
     assert.equal(tools.some(t => /shell|uninstall|erase|reset/.test(t.name)), false);
     const hosts = await client.callTool({ name: 'ios_list_hosts', arguments: {} });
     assert.deepEqual(hosts.structuredContent.hosts, []);

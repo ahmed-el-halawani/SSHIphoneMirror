@@ -81,8 +81,60 @@ struct DetailView: View {
                 .accessibilityIdentifier("detail_screen_title")
             Text("Navigated successfully via IDB")
                 .accessibilityIdentifier("detail_screen_body")
+            NavigationLink("Open Interaction Lab", destination: InteractionLab())
+                .accessibilityIdentifier("lab_link")
         }
         .navigationTitle("Detail")
+    }
+}
+
+struct InteractionLab: View {
+    @State private var toggle = false
+    @State private var text = ""
+    @State private var password = ""
+    @State private var result = "None"
+    @State private var sheet = false
+    @State private var alert = false
+    @State private var pressed = false
+
+    var body: some View {
+        Form {
+            Section("Controls") {
+                Toggle("Enable option", isOn: $toggle).accessibilityIdentifier("lab_toggle")
+                Text(toggle ? "Option: On" : "Option: Off").accessibilityIdentifier("toggle_result")
+                TextField("Unicode text", text: $text).accessibilityIdentifier("lab_text")
+                SecureField("Password", text: $password).accessibilityIdentifier("lab_secure")
+                Button("Read fields") { result = text + " | length: \(password.count)" }
+                    .accessibilityIdentifier("lab_submit")
+                Text(result).accessibilityIdentifier("lab_result")
+            }
+            Section("Identity and gestures") {
+                Button("Same label") { result = "First duplicate" }.accessibilityIdentifier("duplicate_first")
+                Button("Same label") { result = "Second duplicate" }.accessibilityIdentifier("duplicate_second")
+                Button("Disabled control") { result = "WRONG: disabled" }
+                    .disabled(true).accessibilityIdentifier("disabled_button")
+                Text(pressed ? "Long press: Done" : "Hold here")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .accessibilityIdentifier("long_press_target")
+                    .onLongPressGesture(minimumDuration: 0.5) { pressed = true }
+            }
+            Section("Dialogs") {
+                Button("Open sheet") { sheet = true }.accessibilityIdentifier("sheet_button")
+                Button("Open alert") { alert = true }.accessibilityIdentifier("alert_button")
+            }
+        }
+        .navigationTitle("Interaction Lab")
+        .sheet(isPresented: $sheet) {
+            VStack {
+                Text("Modal content").accessibilityIdentifier("modal_title")
+                Button("Close sheet") { sheet = false }.accessibilityIdentifier("modal_close")
+            }
+        }
+        .alert("Test alert", isPresented: $alert) {
+            Button("Confirm") { result = "Alert confirmed" }.accessibilityIdentifier("alert_confirm")
+            Button("Cancel", role: .cancel) { }
+        }
     }
 }
 
