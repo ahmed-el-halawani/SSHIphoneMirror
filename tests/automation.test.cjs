@@ -117,6 +117,35 @@ test('screenshots have a separate bounded transfer budget and suppress SSH loggi
   } }, 'screenshot', {});
 });
 
+test('explicit real session startup includes automatic tools setup before WDA startup', async () => {
+  const real = require('../app/real-device.cjs');
+  const prepare = real.prepareWda;
+  let calls = 0, uploads = 0;
+  real.prepareWda = async () => { uploads++; };
+  try { await execute({ run: async script => {
+    const args = JSON.parse(Buffer.from(script.match(/sys.argv.append\('([^']+)'\)/)[1], 'base64'));
+    calls++;
+    if (calls === 1) {
+      assert.equal(args.sessionScript, undefined);
+      return '{"ok":false,"error":{"code":"SESSION_REQUIRED"}}';
+    }
+    assert.equal(uploads, 1);
+    assert.equal(args.sessionScript, real.install + '\n' + real.startScript('00008140-001645D80A10801C'));
+    return '{"ok":true}';
+  } }, 'start_session', { deviceId: 'real:00008140-001645D80A10801C' });
+  assert.equal(calls, 2);
+  } finally { real.prepareWda = prepare; }
+});
+
+test('a healthy real session is reused without invoking the signing launcher', async () => {
+  const result = await execute({
+    run: async () => '{"ok":true,"reused":true,"executed":false,"verified":true}',
+    runSigned: async () => { throw Error('Signing must not run for a healthy session'); }
+  }, 'start_session', { deviceId: 'real:00008140-001645D80A10801C' });
+  assert.equal(result.reused, true);
+  assert.equal(result.executed, false);
+});
+
 test('unknown driver outcomes preserve the cause and stage without replaying input',async()=>{
   let calls=0;
   await assert.rejects(execute({run:async()=>{calls++;return JSON.stringify({ok:false,executed:null,verified:false,error:{code:'OUTCOME_UNKNOWN',causeCode:'TIMEOUT',stage:'idb.ui.tap',message:'Inspect state before retrying.'}})}},'tap',{}),e=>e.code==='OUTCOME_UNKNOWN'&&e.causeCode==='TIMEOUT'&&e.stage==='idb.ui.tap'&&e.executed===null);

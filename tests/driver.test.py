@@ -21,6 +21,18 @@ def element(identifier='button', **values):
 
 
 class DriverTests(unittest.TestCase):
+    def test_real_session_failure_preserves_bounded_setup_diagnostics_without_retry(self):
+        with tempfile.TemporaryDirectory() as folder, \
+                patch.object(driver, 'device_lock', return_value=contextlib.nullcontext()), \
+                patch.object(driver, 'reservation_path', return_value=pathlib.Path(folder) / 'viewer.json'), \
+                patch.object(driver.pathlib.Path, 'home', return_value=pathlib.Path(folder)), \
+                patch.object(driver.subprocess, 'run', return_value=types.SimpleNamespace(returncode=1, stderr=b'x' * 4000 + b'Unlock the iPhone', stdout=b'')) as run:
+            with self.assertRaisesRegex(driver.Failure, 'Unlock the iPhone') as error:
+                driver.dispatch({'action': 'start_session', 'deviceId': 'real:00008140-001645D80A10801C', 'sessionScript': 'setup'})
+            self.assertEqual(error.exception.code, 'SESSION_START_FAILED')
+            self.assertLess(len(str(error.exception)), 3100)
+            run.assert_called_once()
+
     def test_interrupted_cli_terminates_its_process_group(self):
         fake = driver.Simulator.__new__(driver.Simulator)
         fake.root, fake.deadline = pathlib.Path('/runtime'), driver.time.monotonic() + 10

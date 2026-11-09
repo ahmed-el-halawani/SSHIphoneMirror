@@ -395,8 +395,9 @@ app.whenReady().then(async () => {
         else {
         log('Installing real-iPhone tools if needed…');
         await conn.run(real.install,600000,controller.signal);
-        log('Signing, installing and starting WebDriverAgent. Keep the iPhone unlocked; first setup can take several minutes…');
-        info=resultJSON(await conn.runSigned(real.startScript(device),720000,controller.signal));
+        log('Sending and installing bundled WebDriverAgent. Keep the iPhone unlocked…');
+        await real.prepareWda(conn,controller.signal);
+        info=resultJSON(await conn.run(real.startScript(device),720000,controller.signal));
         }
         tunnel=await conn.forward([17425,19100],controller.signal);
         if(controller.signal.aborted)throw Error('Connection cancelled.');

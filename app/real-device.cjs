@@ -1,5 +1,6 @@
 const { quote, resultJSON } = require('./core.cjs');
 const fs=require('node:fs'),path=require('node:path');
+const { loadBundle, prepareWda } = require('./automation/wda-runtime.cjs');
 const embedded=name=>fs.readFileSync(path.join(__dirname,name)).toString('base64');
 
 function validateRealUdid(value) {
@@ -37,39 +38,41 @@ PY`;
 
 function startScript(udid) {
   validateRealUdid(udid);
+  const bundle = loadBundle();
   return `set -e
 export PATH="$HOME/Documents/Codex/developer-tools/node/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 TOOLS="$HOME/.local/share/iphone-mirror-tools"
 export APPIUM_HOME="$TOOLS/extensions"
 export MIRROR_DEVICE_UDID=${quote(udid)}
 /usr/bin/python3 - <<'PY'
-import json,os,pathlib,re,signal,subprocess,time,urllib.request,urllib.error,tempfile,ipaddress,base64
+import json,os,pathlib,signal,subprocess,time,urllib.request,urllib.error,tempfile,ipaddress,base64,plistlib,datetime
 tools=pathlib.Path.home()/'.local/share/iphone-mirror-tools'
 base='http://127.0.0.1:17425'
 with tempfile.TemporaryDirectory() as folder:
  file=folder+'/device.json'
  subprocess.run(['xcrun','devicectl','device','info','details','--device',os.environ['MIRROR_DEVICE_UDID'],'--json-output',file,'--timeout','30'],check=True,stdout=subprocess.DEVNULL)
  device=json.load(open(file))['result']
+ lock_file=folder+'/lock.json'
+ subprocess.run(['xcrun','devicectl','device','info','lockState','--device',os.environ['MIRROR_DEVICE_UDID'],'--json-output',lock_file,'--timeout','30'],check=True,stdout=subprocess.DEVNULL)
+ if json.load(open(lock_file))['result'].get('passcodeRequired'):
+  raise SystemExit('Unlock the iPhone and keep it awake, then start the session again. Xcode cannot launch WebDriverAgent while the phone is locked.')
 connection=device.get('connectionProperties',{})
 wifi=connection.get('transportType')=='localNetwork'
 binding=connection.get('tunnelIPAddress') if wifi else '127.0.0.1'
 if wifi and (not binding or not binding.lower().startswith('fd') or ipaddress.ip_address(binding).version!=6): raise SystemExit('No encrypted Wi-Fi tunnel is available. Unlock the phone and verify Xcode can connect to it over the network.')
-identities=subprocess.check_output(['security','find-identity','-v','-p','codesigning'],text=True)
-names=re.findall(r'[0-9A-F]{40} "(Apple Development:[^"]+)"',identities)
-if not names: raise SystemExit('No valid Apple Development signing identity. Add your development account in Xcode on the Mac.')
-teams=set()
-for name in names:
-  pem=subprocess.check_output(['security','find-certificate','-c',name,'-p'])
-  subject=subprocess.check_output(['openssl','x509','-noout','-subject','-nameopt','RFC2253'],input=pem).decode()
-  match=re.search(r'(?:^|,)OU=([A-Z0-9]{10})(?:,|$)',subject)
-  if match: teams.add(match.group(1))
-previous={}
-try: previous=json.loads((tools/'current-session.json').read_text())
-except (OSError,ValueError): pass
-team=previous.get('team') if previous.get('udid')==os.environ['MIRROR_DEVICE_UDID'] else None
-if team not in teams:
-  if len(teams)!=1: raise SystemExit('Cannot choose a unique development team. Configure a single valid team for automatic WDA signing on this Mac.')
-  team=next(iter(teams))
+bundle=tools/'wda'/${quote(bundle.sha256)}
+app=bundle/'Payload/WebDriverAgentRunner-Runner.app'
+subprocess.run(['codesign','--verify','--deep','--strict',str(app)],check=True)
+profile=plistlib.loads(subprocess.check_output(['security','cms','-D','-i',str(app/'embedded.mobileprovision')]))
+if profile['ExpirationDate']<=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None): raise SystemExit('The bundled WebDriverAgent signing profile expired. Replace the IPA with a renewed signed package; no source rebuild is required.')
+if not profile.get('ProvisionsAllDevices') and os.environ['MIRROR_DEVICE_UDID'] not in profile.get('ProvisionedDevices',[]): raise SystemExit('The bundled WebDriverAgent IPA is not signed for this iPhone. Add it to the development profile and replace the signed IPA; no source rebuild is required.')
+info=plistlib.loads((app/'Info.plist').read_bytes())
+if info['CFBundleIdentifier']!=${quote(bundle.bundleId)} or profile['TeamIdentifier']!=[${quote(bundle.teamId)}]: raise SystemExit('Bundled WebDriverAgent signing identity does not match its manifest.')
+team=profile['TeamIdentifier'][0]
+platform_version=device['deviceProperties']['osVersionNumber']
+launch=plistlib.loads((bundle/'WebDriverAgentRunner.xctestrun').read_bytes())
+launch['WebDriverAgentRunner']['EnvironmentVariables'].update({'USE_IP':binding,'USE_PORT':'18100','MJPEG_SERVER_PORT':'19102' if wifi else '19100'})
+(bundle/(os.environ['MIRROR_DEVICE_UDID']+'_'+platform_version+'.xctestrun')).write_bytes(plistlib.dumps(launch))
 pidfile=tools/'appium.pid'
 if pidfile.exists():
   try:
@@ -79,6 +82,7 @@ if pidfile.exists():
       os.kill(pid,signal.SIGTERM)
       time.sleep(1)
   except (ValueError,ProcessLookupError,subprocess.CalledProcessError): pass
+subprocess.run(['xcrun','devicectl','device','install','app','--device',os.environ['MIRROR_DEVICE_UDID'],str(app),'--timeout','120'],check=True,stdout=subprocess.DEVNULL)
 log=open(tools/'appium.log','ab')
 os.chmod(tools/'appium.log',0o600)
 proxy_pid=tools/'wifi-proxy.pid'
@@ -115,7 +119,7 @@ for attempt in range(60):
     break
   except (OSError,RuntimeError): time.sleep(0.5)
 else: raise SystemExit('Appium did not become ready in time.')
-caps={'platformName':'iOS','appium:automationName':'XCUITest','appium:udid':os.environ['MIRROR_DEVICE_UDID'],'appium:noReset':True,'appium:useNewWDA':previous.get('bindingIP')!=binding or previous.get('udid')!=os.environ['MIRROR_DEVICE_UDID'],'appium:newCommandTimeout':0,'appium:xcodeOrgId':team,'appium:xcodeSigningId':'Apple Development','appium:updatedWDABundleId':'dev.iphonemirror.wda.'+team.lower(),'appium:allowProvisioningUpdates':True,'appium:allowProvisioningDeviceRegistration':True,'appium:wdaBindingIP':binding,'appium:wdaLocalPort':18100,'appium:mjpegServerPort':19102 if wifi else 19100,'appium:wdaLaunchTimeout':180000,'appium:wdaStartupRetries':1,'appium:waitForIdleTimeout':1,'appium:showXcodeLog':True,'appium:settings[mjpegServerFramerate]':12,'appium:settings[mjpegServerScreenshotQuality]':50}
+caps={'platformName':'iOS','appium:platformVersion':platform_version,'appium:automationName':'XCUITest','appium:udid':os.environ['MIRROR_DEVICE_UDID'],'appium:noReset':True,'appium:useNewWDA':False,'appium:usePrebuiltWDA':True,'appium:useXctestrunFile':True,'appium:bootstrapPath':str(bundle),'appium:newCommandTimeout':0,'appium:updatedWDABundleId':${quote(bundle.bundleId.replace(/\.xctrunner$/, ''))},'appium:wdaBindingIP':binding,'appium:wdaLocalPort':18100,'appium:wdaRemotePort':18100,'appium:mjpegServerPort':19102 if wifi else 19100,'appium:wdaLaunchTimeout':180000,'appium:wdaStartupRetries':1,'appium:waitForIdleTimeout':1,'appium:showXcodeLog':True,'appium:settings[mjpegServerFramerate]':12,'appium:settings[mjpegServerScreenshotQuality]':50}
 try:
   session=request('POST','/session',{'capabilities':{'alwaysMatch':caps,'firstMatch':[{}]}},timeout=600)
   sid=session['sessionId']
@@ -169,4 +173,4 @@ print('MIRROR_JSON='+json.dumps(state))
 PY`;
 }
 
-module.exports={validateRealUdid,validateInput,install,startScript,attachScript,request,input,cancel};
+module.exports={validateRealUdid,validateInput,install,startScript,attachScript,request,input,cancel,prepareWda};

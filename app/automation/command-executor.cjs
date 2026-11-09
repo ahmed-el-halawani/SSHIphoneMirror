@@ -12,16 +12,23 @@ async function execute(conn, action, args, signal) {
   if(action==='start_session') {
     const real=require('../real-device.cjs');
     real.validateRealUdid(args.deviceId?.slice(5));
-    args={...args,sessionScript:real.startScript(args.deviceId.slice(5))};
+    args={...args,sessionScript:real.install+'\n'+real.startScript(args.deviceId.slice(5))};
   }
   try {
     const timeout = action === 'start_session' ? 720000 : Math.min(180000, (args.timeoutMs || 30000) + 15000);
-    if (conn.open && args.deviceId && !args.deviceId.startsWith('real:') && action !== 'wait_viewer') {
+    if (action === 'start_session') {
+      output = await conn.run(scriptFor(action, { ...args, sessionScript: undefined }), 15000, signal, { quiet: true });
+      const probe = JSON.parse(output.trim());
+      if (!probe.ok && probe.error?.code === 'SESSION_REQUIRED') {
+        await require('../real-device.cjs').prepareWda(conn, signal);
+        output = await conn.run(scriptFor(action, args), timeout, signal, { quiet: true });
+      }
+    } else if (conn.open && args.deviceId && !args.deviceId.startsWith('real:') && action !== 'wait_viewer') {
       const { Worker } = require('./worker.cjs');
       conn.automationWorker ||= new Worker(conn);
       output = await conn.automationWorker.request(action, args, timeout, signal);
     } else {
-      output = await (action === 'start_session' ? conn.runSigned.bind(conn) : conn.run.bind(conn))(scriptFor(action, args), timeout, signal, { maxBytes: action === 'screenshot' ? 24 * 1024 * 1024 : 4 * 1024 * 1024, quiet: true });
+      output = await conn.run(scriptFor(action, args), timeout, signal, { maxBytes: action === 'screenshot' ? 24 * 1024 * 1024 : 4 * 1024 * 1024, quiet: true });
     }
   }
   catch (error) {

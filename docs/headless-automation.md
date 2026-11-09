@@ -4,7 +4,7 @@ The Windows Node process serves MCP over stdio and calls IDB or Appium on the Ma
 
 Closing the window disconnects its video and viewer tunnels and hides the app in the system tray. Subsequent MCP calls leave it hidden. The simulator, WDA session, and the separate MCP connection keep running. Choose **Show iPhone Mirror** in the tray menu, or double-click its icon, to reconnect to the latest agent-selected device. **Quit iPhone Mirror** exits the desktop app; it does not terminate the separate agent process or its device session.
 
-The desktop and MCP coordinate over an authenticated local named pipe (a local socket on other platforms). Device requests are validated, Mac profiles still come from local enrollment, and credentials and screen contents are not sent through the bridge. Source execution requires the Electron development runtime; the installed executable supplies its own runtime. No public automation port is exposed.
+The desktop and MCP coordinate over an authenticated local named pipe (a local socket on other platforms). If the viewer cannot connect, device operations continue over SSH and return `viewerWarning`; Mac device locks, manual-control reservations and local host permissions still apply. Device requests are validated, Mac profiles still come from local enrollment, and credentials and screen contents are not sent through the bridge. Source execution requires the Electron development runtime; the installed executable supplies its own runtime. No public automation port is exposed.
 
 ## Setup from the desktop
 
@@ -148,7 +148,7 @@ A crash or SSH failure during release can leave a viewer reservation. It fails c
 node app/automation/recover-viewer.cjs mac DEVICE_ID --viewer-is-closed
 ```
 
-Real iPhone setup uses the existing Appium/WDA tools. `ios_start_session` explicitly reuses a healthy matching session or starts one using the existing signing path. It never installs tooling silently. A different device in `current-session.json` returns `SESSION_CONFLICT`. Desktop disconnect/exit closes its viewer and tunnels while preserving the Appium session. Session setup cancellation can still stop an in-progress setup. There is no multi-iPhone guarantee, implicit device switching, or automatic replay after disconnect.
+`ios_start_session` explicitly reuses a healthy matching session or prepares the bundled signed IPA and runs the desktop's automatic Appium/XCUITest installer before installing WDA directly and launching the bundled XCTest description with `test-without-building`. Node.js and full Xcode must be configured on the Mac. No WDA compile or signing step runs during connection. The IPA must have a valid provisioning profile that includes the requested iPhone; an expired or incompatible profile is rejected before replacing the current Appium session. Startup failures include bounded setup diagnostics. A different device in `current-session.json` returns `SESSION_CONFLICT`. Desktop disconnect/exit closes its viewer and tunnels while preserving the Appium session. Session setup cancellation can still stop an in-progress setup. There is no multi-iPhone guarantee, implicit device switching, or automatic replay after disconnect.
 
 Allow up to 12 minutes in your MCP client's tool timeout for explicit real-device session startup. Ordinary device calls have bounded deadlines of at most two minutes.
 

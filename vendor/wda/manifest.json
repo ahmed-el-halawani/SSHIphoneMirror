@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "wdaVersion": "16.17.1",
+  "archive": "WebDriverAgentRunner.ipa",
+  "sha256": "19c4a6e04a228fe9f71ae3dd3178491a0041f732aa2f2c6729a24c112901d048",
+  "bytes": 6465973,
+  "bundleId": "dev.iphonemirror.wda.blsh5nku48.xctrunner",
+  "teamId": "BLSH5NKU48",
+  "expiresAt": "2027-10-22T12:22:10Z",
+  "provisionedDevices": [
+    "00008140-001645D80A10801C"
+  ],
+  "minimumOS": "13.0",
+  "launch": "xctestrun"
+}

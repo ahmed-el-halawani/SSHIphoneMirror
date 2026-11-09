@@ -54,6 +54,7 @@ class Controller {
     const start = performance.now();
     const metadata = { hostId: args.hostId || null, deviceId: args.deviceId || null, driver: args.deviceId?.startsWith('real:') ? 'wda' : 'idb', action };
     let conn;
+    let viewerWarning;
     try {
       const { contracts } = await import('../mcp/tools.mjs');
       if(!contracts[action])throw Object.assign(Error('Unknown automation action.'),{code:'UNSUPPORTED'});
@@ -61,7 +62,10 @@ class Controller {
       if(!parsed.success)throw Object.assign(Error('Invalid automation arguments.'),{code:'INVALID_ARGUMENT'});
       args=parsed.data;
       if (MUTATIONS.has(action) && !this.config.hosts.some(h => h.id === args.hostId && h.control)) throw Object.assign(Error('Device control is disabled. Enable control for this host in the local automation configuration.'), { code: 'PERMISSION_DENIED' });
-      if (this.desktop) await this.desktop(action, args);
+      if (this.desktop) {
+        try { await this.desktop(action, args); }
+        catch (error) { viewerWarning = error.message; }
+      }
       if (action === 'list_hosts') return { ...metadata, ok: true, status: 'success', hosts: await profiles.listHosts(this.config), durationMs: Math.round(performance.now() - start) };
       conn = await this.getHostConnection(args.hostId);
       if(args.deviceId && !args.deviceId.startsWith('real:')) {
@@ -84,7 +88,6 @@ class Controller {
         // The first attempt stopped at the reservation check, before dispatch.
         result=await execute(conn,action,args,signal);
       }
-      let viewerWarning;
       if (action === 'start_session' && this.desktop) {
         try { await this.desktop(action, args, 'after'); }
         catch (error) { viewerWarning = error.message; }

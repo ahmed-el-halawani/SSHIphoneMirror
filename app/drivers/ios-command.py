@@ -335,7 +335,7 @@ class RealPhone:
         try:
             state = json.loads((pathlib.Path.home() / '.local/share/iphone-mirror-tools/current-session.json').read_text())
         except (OSError, ValueError):
-            fail('SESSION_REQUIRED', 'Start a real-device session explicitly with the desktop app, then detach the viewer.')
+            fail('SESSION_REQUIRED', 'Start a real-device session explicitly with ios_start_session or the desktop app.')
         if state.get('udid') != device[5:] or not re.fullmatch(r'[a-fA-F0-9-]{36}', state.get('sessionId', '')):
             fail('SESSION_CONFLICT', 'A different real iPhone owns the single Appium session.')
         self.session = state['sessionId']
@@ -520,9 +520,12 @@ def dispatch(args):
                     return {'executed': False, 'verified': True, 'reused': True}
                 except Failure:
                     pass
+            if not args.get('sessionScript'):
+                fail('SESSION_REQUIRED', 'The iPhone needs a new Appium session.')
             proc = subprocess.run(['/bin/sh'], input=args['sessionScript'].encode(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=690)
             if proc.returncode:
-                fail('SESSION_START_FAILED', 'Real iPhone startup failed; check signing, tools and the Mac Appium log.')
+                detail = (proc.stderr or proc.stdout).decode('utf-8', errors='replace').strip()[-3000:]
+                fail('SESSION_START_FAILED', 'Real iPhone startup failed: ' + (detail or 'check signing, tools and the Mac Appium log.'))
             return {'executed': True, 'verified': True}
         driver = RealPhone(device, deadline) if device.startswith('real:') else Simulator(device, deadline)
         if action == 'get_capabilities':

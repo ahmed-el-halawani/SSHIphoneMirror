@@ -37,7 +37,7 @@ test('desktop is opened before dispatch and a successful real session is never r
     if (phase === 'after') throw Error('Video unavailable');
   };
   const controller = new Controller({ hosts: [{ id: 'mac', control: true }] }, desktop);
-  controller.getHostConnection = async () => ({ runSigned: async () => { calls.push('dispatch'); return '{"ok":true}'; } });
+  controller.getHostConnection = async () => ({ run: async () => { calls.push('dispatch'); return '{"ok":true,"reused":true}'; } });
   const result = await controller.call('start_session', { hostId: 'mac', deviceId });
   assert.equal(result.ok, true); assert.equal(result.viewerWarning, 'Video unavailable');
   assert.deepEqual(calls, ['before:start_session', 'dispatch', 'after:start_session']);
@@ -45,4 +45,25 @@ test('desktop is opened before dispatch and a successful real session is never r
   const denied = new Controller({ hosts: [] }, desktop);
   assert.equal((await denied.call('tap', { hostId: 'mac', deviceId, x: 1, y: 1 })).error.code, 'PERMISSION_DENIED');
   assert.deepEqual(calls, [], 'permission rejection must happen before desktop startup');
+});
+
+test('an inaccessible desktop cannot block MCP screenshots or bypass Mac control reservations', async () => {
+  const image = Buffer.from([137,80,78,71,13,10,26,10]).toString('base64');
+  const controller = new Controller({ hosts: [{ id: 'mac', control: true }] }, async () => {
+    throw Object.assign(Error('Desktop pipe unavailable'), { code: 'EPERM' });
+  });
+  controller.getHostConnection = async () => ({ run: async script => {
+    const args = JSON.parse(Buffer.from(script.match(/sys.argv.append\('([^']+)'\)/)[1], 'base64'));
+    return JSON.stringify(args.action === 'screenshot' ? { ok: true, image } : {
+      ok: false, executed: false, error: { code: 'DEVICE_BUSY', message: 'Manual viewer owns control' }
+    });
+  } });
+  const args = { hostId: 'mac', deviceId: 'real:00008140-001645D80A10801C' };
+  const result = await controller.call('screenshot', args);
+  assert.equal(result.ok, true);
+  assert.equal(result.image, image);
+  assert.equal(result.viewerWarning, 'Desktop pipe unavailable');
+  const blocked = await controller.call('tap', { ...args, x: 1, y: 1 });
+  assert.equal(blocked.error.code, 'DEVICE_BUSY');
+  assert.equal(blocked.executed, false);
 });

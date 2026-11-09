@@ -9,7 +9,7 @@ const duration = z.number().finite().min(0.1).max(5).default(0.3);
 const coordinateSpace = z.enum(['points', 'pixels', 'relative']).default('points');
 const app = { ...device, bundleId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,254}$/), expected: expected.optional() };
 export const contracts = {
-  start_session: { schema: z.object({ ...host, deviceId: z.string().regex(/^real:(?:[a-f0-9]{8}-[a-f0-9]{16}|[a-f0-9]{40})$/i) }).strict(), mutation: true, description: 'Explicitly start or reuse the single real iPhone WDA session on a Mac. Requires tools already installed and signing configured; may take 12 minutes. Session survives viewer and MCP exit.' },
+  start_session: { schema: z.object({ ...host, deviceId: z.string().regex(/^real:(?:[a-f0-9]{8}-[a-f0-9]{16}|[a-f0-9]{40})$/i) }).strict(), mutation: true, description: 'Explicitly start or reuse the single real iPhone WDA session on a Mac. Installs missing Appium/XCUITest tools automatically and installs the bundled signed WDA IPA without compiling it; requires Node.js, Xcode and an IPA provisioning profile valid for this iPhone. May take 12 minutes. Session survives viewer and MCP exit.' },
   list_hosts: { schema: z.object({}).strict(), description: 'List configured Macs. Host trust and permissions are configured locally.' },
   list_devices: { schema: z.object(host).strict(), description: 'List available simulators and physical iPhones without booting or opening them.' },
   get_capabilities: { schema: z.object(device).strict(), description: 'Probe device accessibility and available automation operations.' },

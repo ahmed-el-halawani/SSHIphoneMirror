@@ -195,7 +195,9 @@ async function connect(profile, password, trust, log) {
         });
         const fastRunner = {
           close() { this.automationWorker?.close(); fastConn.end(); runner.close(); },
-          open: runner.open.bind(runner),
+          open(command) {
+            return new Promise((resolve, reject) => fastConn.exec(command, (error, stream) => error ? reject(error) : resolve(stream)));
+          },
           runSigned: runner.runSigned.bind(runner),
           forward: runner.forward.bind(runner),
           run(script, timeout = 180000, signal, options = {}) {
