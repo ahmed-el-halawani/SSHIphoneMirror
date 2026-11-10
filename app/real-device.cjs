@@ -28,7 +28,7 @@ node "$TOOLS/patch-wda-ipv6.cjs"`;
 const cancel = `/usr/bin/python3 - <<'PY'
 import pathlib,os,signal,subprocess
 tools=pathlib.Path.home()/'.local/share/iphone-mirror-tools'
-for name,expected in [('appium.pid','17425'),('wifi-proxy.pid','mac-wifi-proxy.cjs')]:
+for name,expected in [('appium.pid','17425'),('wifi-proxy.pid','mac-wifi-proxy.cjs'),('wda-native.pid','xcodebuild')]:
  try:
   pid=int((tools/name).read_text())
   cmd=subprocess.check_output(['ps','-p',str(pid),'-o','command='],text=True)
@@ -50,12 +50,20 @@ tools=pathlib.Path.home()/'.local/share/iphone-mirror-tools'
 base='http://127.0.0.1:17425'
 with tempfile.TemporaryDirectory() as folder:
  file=folder+'/device.json'
- subprocess.run(['xcrun','devicectl','device','info','details','--device',os.environ['MIRROR_DEVICE_UDID'],'--json-output',file,'--timeout','30'],check=True,stdout=subprocess.DEVNULL)
- device=json.load(open(file))['result']
  lock_file=folder+'/lock.json'
- subprocess.run(['xcrun','devicectl','device','info','lockState','--device',os.environ['MIRROR_DEVICE_UDID'],'--json-output',lock_file,'--timeout','30'],check=True,stdout=subprocess.DEVNULL)
- if json.load(open(lock_file))['result'].get('passcodeRequired'):
-  raise SystemExit('Unlock the iPhone and keep it awake, then start the session again. Xcode cannot launch WebDriverAgent while the phone is locked.')
+ for attempt in range(5):
+  try:
+   subprocess.run(['xcrun','devicectl','device','info','lockState','--device',os.environ['MIRROR_DEVICE_UDID'],'--json-output',lock_file,'--timeout','30'],check=True,stdout=subprocess.DEVNULL)
+   if json.load(open(lock_file))['result'].get('passcodeRequired'):
+    raise SystemExit('Unlock the iPhone and keep it awake, then start the session again. Xcode cannot launch WebDriverAgent while the phone is locked.')
+   subprocess.run(['xcrun','devicectl','device','info','details','--device',os.environ['MIRROR_DEVICE_UDID'],'--json-output',file,'--timeout','30'],check=True,stdout=subprocess.DEVNULL)
+   device=json.load(open(file))['result']
+   if device.get('connectionProperties',{}).get('transportType')=='localNetwork' and not device.get('connectionProperties',{}).get('tunnelIPAddress'):
+    if attempt<4: time.sleep(1);continue
+   break
+  except subprocess.CalledProcessError:
+   if attempt==4: raise
+   time.sleep(1)
 connection=device.get('connectionProperties',{})
 wifi=connection.get('transportType')=='localNetwork'
 binding=connection.get('tunnelIPAddress') if wifi else '127.0.0.1'
@@ -74,6 +82,12 @@ launch=plistlib.loads((bundle/'WebDriverAgentRunner.xctestrun').read_bytes())
 launch['WebDriverAgentRunner']['EnvironmentVariables'].update({'USE_IP':binding,'USE_PORT':'18100','MJPEG_SERVER_PORT':'19102' if wifi else '19100'})
 (bundle/(os.environ['MIRROR_DEVICE_UDID']+'_'+platform_version+'.xctestrun')).write_bytes(plistlib.dumps(launch))
 pidfile=tools/'appium.pid'
+native_pid=tools/'wda-native.pid'
+if native_pid.exists():
+ try:
+  old=int(native_pid.read_text());cmd=subprocess.check_output(['ps','-p',str(old),'-o','command='],text=True)
+  if str(tools) in cmd and 'xcodebuild' in cmd: os.kill(old,signal.SIGTERM);time.sleep(1)
+ except (OSError,ValueError,subprocess.CalledProcessError): pass
 if pidfile.exists():
   try:
     pid=int(pidfile.read_text())
@@ -120,8 +134,36 @@ for attempt in range(60):
   except (OSError,RuntimeError): time.sleep(0.5)
 else: raise SystemExit('Appium did not become ready in time.')
 caps={'platformName':'iOS','appium:platformVersion':platform_version,'appium:automationName':'XCUITest','appium:udid':os.environ['MIRROR_DEVICE_UDID'],'appium:noReset':True,'appium:useNewWDA':False,'appium:usePrebuiltWDA':True,'appium:useXctestrunFile':True,'appium:bootstrapPath':str(bundle),'appium:newCommandTimeout':0,'appium:updatedWDABundleId':${quote(bundle.bundleId.replace(/\.xctrunner$/, ''))},'appium:wdaBindingIP':binding,'appium:wdaLocalPort':18100,'appium:wdaRemotePort':18100,'appium:mjpegServerPort':19102 if wifi else 19100,'appium:wdaLaunchTimeout':180000,'appium:wdaStartupRetries':1,'appium:waitForIdleTimeout':1,'appium:showXcodeLog':True,'appium:settings[mjpegServerFramerate]':12,'appium:settings[mjpegServerScreenshotQuality]':50}
+def start_session():
+ try:
+  return request('POST','/session',{'capabilities':{'alwaysMatch':caps,'firstMatch':[{}]}},timeout=600)
+ except RuntimeError as error:
+  if not wifi or 'Unknown device or simulator UDID' not in str(error): raise
+ # CoreDevice can see a bridged phone even when Appium's legacy USB discovery cannot.
+ native_log=open(tools/'wda-native.log','ab');os.chmod(tools/'wda-native.log',0o600)
+ native=subprocess.Popen(['xcodebuild','test-without-building','-xctestrun',str(bundle/(os.environ['MIRROR_DEVICE_UDID']+'_'+platform_version+'.xctestrun')),'-destination','id='+os.environ['MIRROR_DEVICE_UDID']],stdin=subprocess.DEVNULL,stdout=native_log,stderr=native_log,start_new_session=True)
+ native_pid.write_text(str(native.pid));os.chmod(native_pid,0o600)
+ native_url='http://['+binding+']:18100'
+ for attempt in range(90):
+  if native.poll() is not None: raise RuntimeError('Native WDA launch exited. Check ~/.local/share/iphone-mirror-tools/wda-native.log on the Mac.')
+  try:
+   with urllib.request.urlopen(native_url+'/status',timeout=2) as response: json.load(response)
+   break
+  except (OSError,ValueError): time.sleep(1)
+ else:
+  native.terminate()
+  raise RuntimeError('Native WDA launch did not become ready. Check the Mac WDA log and phone connection.')
+ caps['appium:webDriverAgentUrl']=native_url
+ # The existing private video relay owns MJPEG forwarding for this transport.
+ caps.pop('appium:mjpegServerPort',None)
+ caps['appium:settings[screenshotQuality]']=2
+ try:
+  return request('POST','/session',{'capabilities':{'alwaysMatch':caps,'firstMatch':[{}]}},timeout=600)
+ except Exception:
+  native.terminate()
+  raise
 try:
-  session=request('POST','/session',{'capabilities':{'alwaysMatch':caps,'firstMatch':[{}]}},timeout=600)
+  session=start_session()
   sid=session['sessionId']
   rect=request('GET','/session/'+sid+'/window/rect')
   result={'sessionId':sid,'width':rect['width'],'height':rect['height'],'team':team,'udid':os.environ['MIRROR_DEVICE_UDID'],'bindingIP':binding,'transport':'Wi-Fi' if wifi else 'USB'}
@@ -134,7 +176,7 @@ PY`;
 
 async function request(base, session, suffix, method='GET', body) {
   if(!/^[a-f0-9-]{36}$/i.test(session)) throw Error('Invalid device session.');
-  const response=await fetch(`${base}/session/${session}${suffix}`,{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(30000)});
+  const response=await fetch(`${base}/session/${session}${suffix}`,{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(suffix==='/screenshot'?90000:30000)});
   const data=await response.json();
   if(!response.ok || data.value?.error)throw Error(data.value?.message || 'The iPhone command failed.');
   return data.value;

@@ -12,6 +12,22 @@ const { ensureSimulatorRuntime } = require('./automation/simulator-runtime.cjs')
 const clientSetup = require('./mcp/client-setup.cjs');
 const profiles = require('./automation/connection-profiles.cjs');
 const { serveDesktop } = require('./automation/desktop-viewer.cjs');
+const { runUSBBridge } = require('./automation/usb-bridge.cjs');
+let usbBridge;
+async function stopUSBBridge() {
+  const current=usbBridge;usbBridge=null;
+  if(!current)return;
+  current.controller.abort();await current.done;
+}
+async function restartUSBBridge() {
+  await stopUSBBridge();
+  if(!active || store.usbSharing!==true)return;
+  const controller=new AbortController();
+  const current={controller};usbBridge=current;
+  current.done=runUSBBridge(active.profile,{signal:controller.signal,connectMac:runner,log:message=>log('USB: '+message)})
+    .catch(error=>log('USB sharing stopped: '+error.message))
+    .finally(()=>{if(usbBridge===current)usbBridge=null;});
+}
 let tray, quitting = false, traySuspended = false, closingView = null, agentTarget = null, closeDesktop;
 const primaryInstance = app.requestSingleInstanceLock();
 if (!primaryInstance) app.quit();
@@ -266,6 +282,13 @@ app.whenReady().then(async () => {
   tray.on('double-click', () => restoreWindow());
 
   handle('profiles', () => store.profiles.map(publicProfile), false);
+  handle('usb-sharing-state',()=>store.usbSharing===true,false);
+  handle('usb-sharing',async enabled=>{
+    if(typeof enabled!=='boolean')throw Error('Invalid USB sharing preference.');
+    const previous=store.usbSharing;store.usbSharing=enabled;
+    try {save();} catch(error) {store.usbSharing=previous;throw error;}
+    await restartUSBBridge();return enabled;
+  });
   const automationFile=()=>process.env.IPHONE_MIRROR_CONFIG || path.join(require('node:os').homedir(),'.iphone-mirror','automation.json');
   const mcpLaunch=()=>clientSetup.launch(app.getAppPath(),process.execPath,automationFile());
   handle('mcp-info',()=>{
@@ -349,6 +372,7 @@ app.whenReady().then(async () => {
     }
     await hideViewer();
     await closeReal();
+    await stopUSBBridge();
     active = { profile, password, fingerprint: previous?.fingerprint };
     log('Connecting over SSH and checking macOS / Xcode…');
     const info = await usingRunner(async conn => {
@@ -375,6 +399,7 @@ app.whenReady().then(async () => {
     }
     store.profiles = store.profiles.filter(x => x !== previous);
     store.profiles.push(stored); save();
+    await restartUSBBridge();
     log('Mac ready. Choose a real iPhone or simulator.');
     return info;
   });
@@ -465,7 +490,9 @@ app.whenReady().then(async () => {
       let info;
       if (!active?.automation || active.hostId !== request.hostId) {
         await hideViewer(); await closeReal();
+        await stopUSBBridge();
         active = { automation: true, hostId: request.hostId, profile: host };
+        await restartUSBBridge();
       }
       if (request.deviceId && viewerDeviceId === request.deviceId && viewer) return {};
       if (!request.deviceId && viewer) return {};
@@ -501,10 +528,11 @@ app.on('window-all-closed', () => app.quit());
 app.on('before-quit',event=>{
   quitting = true;
   closeDesktop?.(); closeDesktop = null;
-  if(!realSession&&!pendingStart&&!releaseViewer)return;
+  if(!realSession&&!pendingStart&&!releaseViewer&&!usbBridge)return;
   event.preventDefault();
   const pending=pendingStart;pending?.controller.abort();
   (async()=>{
+    await stopUSBBridge();
     if(pending){await pending.done;if(pending.physical&&!readOnlyViewer)await usingRunner(conn=>conn.run(real.cancel,15000)).catch(()=>{});}
     await hideViewer();await closeReal();
   })().catch(error=>log(error.message)).finally(()=>{releaseViewer=null;app.quit();});

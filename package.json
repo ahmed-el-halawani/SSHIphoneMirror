@@ -20,6 +20,7 @@
     "appId": "dev.local.iphone-mirror",
     "electronDist": "node_modules/electron/dist",
     "npmRebuild": false,
+    "asarUnpack": ["app/drivers/usb-phone.py"],
     "directories": {
       "output": "release"
     },

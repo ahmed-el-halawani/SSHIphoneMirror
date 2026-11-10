@@ -25,7 +25,7 @@ async function harness() {
   const document={getElementById:id=>entries.get(id),createElement:tag=>new Element(tag),createTextNode:text=>({textContent:text}),querySelector:()=>main,querySelectorAll:()=>[],addEventListener(){},hasFocus:()=>false,activeElement:null};
   const info={devices:[{udid:a,name:'iPhone A',kind:'simulator',state:'Booted',runtime:'iOS-26-3'},{udid:b,name:'iPhone B',kind:'simulator',state:'Booted',runtime:'iOS-26-3'},{udid:c,name:'iPhone C',kind:'simulator',state:'Shutdown',runtime:'iOS-26-3'}]};
   let progress,menuAction,viewerMode;
-  const mirror={profiles:async()=>[],importHosts:async()=>[{kind:'mcp',hostId:'test',name:'Mac',target:'mac.local'}],setup:async()=>structuredClone(info),devices:async()=>{calls.devices++;return structuredClone(info)},panel:async()=>{},onPanel(){},onAgentView(fn){mirror.agentView=fn;},onAction(fn){menuAction=fn},onViewerMode(fn){viewerMode=fn},onProgress:fn=>{progress=fn},
+  const mirror={usbSharingState:async()=>false,usbSharing:async enabled=>{calls.usbSharing=enabled;return enabled},profiles:async()=>[],importHosts:async()=>[{kind:'mcp',hostId:'test',name:'Mac',target:'mac.local'}],setup:async()=>structuredClone(info),devices:async()=>{calls.devices++;return structuredClone(info)},panel:async()=>{},onPanel(){},onAgentView(fn){mirror.agentView=fn;},onAction(fn){menuAction=fn},onViewerMode(fn){viewerMode=fn},onProgress:fn=>{progress=fn},
     start:async id=>{calls.start.push(id);if(mirror.failStart)throw Error('Boot failed');info.devices.find(d=>d.udid===id).state='Booted';},
     shutdown:async id=>{calls.shutdown.push(id);info.devices.find(d=>d.udid===id).state='Shutdown';},disconnect:async()=>{calls.disconnect++;},stop:async()=>{},control:async()=>{},screenshot:async()=>{},chooseKey:async()=>''};
   vm.runInNewContext(fs.readFileSync('app/renderer.js','utf8'),{document,window:{mirror},setInterval:fn=>intervals.push(fn)});
@@ -54,6 +54,17 @@ test('connecting discovers running devices without selecting, booting or opening
   assert.ok(h.labels().includes('iPhone A — Running'));
   assert.ok(h.labels().includes('iPhone C — Stopped'));
   assert.equal(h.entries.get('open').disabled,true);
+});
+
+test('USB sharing can be enabled without opening a device and restores the checkbox on failure',async()=>{
+  const h=await harness();
+  const checkbox=h.entries.get('usbSharing');
+  checkbox.checked=true;await checkbox.onchange();
+  assert.equal(h.calls.usbSharing,true);assert.deepEqual(h.calls.start,[]);
+  h.mirror.usbSharing=async()=>{throw Error('Cannot save USB preference')};
+  checkbox.checked=false;await checkbox.onchange();
+  assert.equal(checkbox.checked,true);
+  assert.match(h.entries.get('status').textContent,/Cannot save USB preference/);
 });
 
 test('switching preserves other running simulators, and shutdown targets only the selected one',async()=>{

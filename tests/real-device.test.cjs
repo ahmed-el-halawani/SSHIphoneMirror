@@ -3,6 +3,40 @@ const assert=require('node:assert/strict');
 const {validateRealUdid,validateInput,startScript,input}=require('../app/real-device.cjs');
 const session='12345678-1234-1234-1234-123456789abc';
 
+test('CoreDevice fallback launches signed WDA only after a definite Appium discovery failure',()=>{
+  const source=startScript('00008140-0000000000000001');
+  const fallback=source.slice(source.indexOf('def start_session():'),source.indexOf('try:\n  session=start_session()'));
+  const code=`import json,os,pathlib,tempfile,subprocess,time,urllib.request,io,copy
+from unittest.mock import patch,Mock
+os.environ['MIRROR_DEVICE_UDID']='00008140-0000000000000001'
+with tempfile.TemporaryDirectory() as folder:
+ tools=bundle=pathlib.Path(folder);native_pid=tools/'wda-native.pid';binding='fd00::1';platform_version='27.0'
+ exec(${JSON.stringify(fallback)})
+ for wifi,error,expected in [(True,None,1),(True,'Unknown device or simulator UDID',2),(False,'Unknown device or simulator UDID',1),(True,'connection outcome unknown',1)]:
+  calls=[];caps={'appium:mjpegServerPort':19102}
+  def request(*args,**kwargs):
+   calls.append(copy.deepcopy(caps))
+   if len(calls)==1 and error: raise RuntimeError(error)
+   return {'sessionId':'ready'}
+  child=Mock(pid=12345);child.poll.return_value=None
+  with patch.object(subprocess,'Popen',return_value=child) as launch,patch.object(urllib.request,'urlopen',return_value=io.StringIO('{}')):
+   try:
+    assert start_session()=={'sessionId':'ready'}
+    assert error is None or expected==2
+   except RuntimeError as failure:
+    assert error is not None and expected==1 and str(failure)==error
+   assert len(calls)==expected
+   assert launch.call_count==(1 if expected==2 else 0)
+   if expected==2:
+    assert launch.call_args.args[0][:2]==['xcodebuild','test-without-building']
+    assert 'appium:mjpegServerPort' in calls[0] and 'appium:mjpegServerPort' not in calls[1]
+    assert calls[1]['appium:webDriverAgentUrl']=='http://[fd00::1]:18100'
+    assert native_pid.read_text()=='12345'
+`;
+  const result=require('node:child_process').spawnSync(process.platform==='win32'?'python':'python3',['-c',code],{encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr);
+});
+
 test('real setup reports a locked phone before starting Appium or installing WDA',()=>{
   const source=startScript('00008140-0000000000000001');
   const preflight=source.slice(source.indexOf('with tempfile.TemporaryDirectory()'),source.indexOf('connection=device.get'));
@@ -19,7 +53,29 @@ for locked in [False,True]:
    assert not locked
   except SystemExit as error:
    assert locked and 'Unlock the iPhone' in str(error)
-  assert calls.call_count==2
+  assert calls.call_count==(1 if locked else 2)
+`;
+  const result=require('node:child_process').spawnSync(process.platform==='win32'?'python':'python3',['-c',code],{encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr);
+});
+
+test('real setup retries transient read failures before preparing WDA',()=>{
+  const source=startScript('00008140-0000000000000001');
+  const preflight=source.slice(source.indexOf('with tempfile.TemporaryDirectory()'),source.indexOf('connection=device.get'));
+  const code=`import json,tempfile,subprocess,os,pathlib,time
+from unittest.mock import patch
+os.environ['MIRROR_DEVICE_UDID']='phone'
+attempts=[]
+def run(argv,**kwargs):
+ attempts.append(argv)
+ if len(attempts)<=2: raise subprocess.CalledProcessError(1,argv)
+ result={'passcodeRequired':False} if 'lockState' in argv else {'connectionProperties':{'transportType':'localNetwork','tunnelIPAddress':'fd00::1'}}
+ pathlib.Path(argv[argv.index('--json-output')+1]).write_text(json.dumps({'result':result}))
+with patch.object(subprocess,'run',side_effect=run),patch.object(time,'sleep'):
+ exec(${JSON.stringify(preflight)})
+assert len(attempts)==4
+assert 'lockState' in attempts[2] and 'details' in attempts[3]
+assert device['connectionProperties']['tunnelIPAddress']=='fd00::1'
 `;
   const result=require('node:child_process').spawnSync(process.platform==='win32'?'python':'python3',['-c',code],{encoding:'utf8'});
   assert.equal(result.status,0,result.stderr);

@@ -92,6 +92,7 @@ function setBusy(value) {
   for (const id of ['connect','attach','import','managerTab','manualTab','hosts','saved','host','username','port','password','chooseKey','clearKey','remember']) $(id).disabled = value;
   $('simulators').disabled = (value && !opening) || !ready || !devices.length;
   $('refresh').disabled = value || !ready;
+  $('usbSharing').disabled = value;
   $('open').disabled = opening ? !!cancelTask : value || !ready || !selected;
   $('open').title = opening ? 'Cancel connection attempt' : 'Reconnect device';
   $('open').setAttribute('aria-label', $('open').title);
@@ -158,6 +159,12 @@ $('connect').onclick = () => action(async () => {
   log('Mac connected. Choose a device; nothing has been opened.');
 });
 function canShutdown(device) { return !!device && device.kind !== 'real' && ['Booted','Booting'].includes(device.state); }
+$('usbSharing').onchange=()=>action(async()=>{
+  const requested=$('usbSharing').checked;
+  try {await window.mirror.usbSharing(requested);log(requested?'USB sharing enabled. Connect the Mac and plug in an unlocked iPhone.':'USB sharing disabled.');}
+  catch(error) {$('usbSharing').checked=!requested;throw error;}
+});
+window.mirror.usbSharingState().then(enabled=>{$('usbSharing').checked=enabled;}).catch(error=>log(error.message,true));
 function renderDevices(next, preserve = $('simulators').value) {
   devices = next;
   $('simulators').replaceChildren();
