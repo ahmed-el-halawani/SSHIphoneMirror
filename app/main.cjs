@@ -416,7 +416,10 @@ app.whenReady().then(async () => {
       try {
         if(!readOnlyViewer)releaseViewer=await claimViewerControl('real:'+device,conn);
         let info;
-        if(readOnlyViewer)info=resultJSON(await conn.run(real.attachScript(device),30000,controller.signal));
+        if(readOnlyViewer) {
+          log('Watch agent mode: checking for a running iPhone session…');
+          info=resultJSON(await conn.run(real.attachScript(device),30000,controller.signal));
+        }
         else {
         log('Installing real-iPhone tools if needed…');
         await conn.run(real.install,600000,controller.signal);

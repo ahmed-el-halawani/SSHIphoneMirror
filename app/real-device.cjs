@@ -208,9 +208,19 @@ async function input(base,session,command) {
 function attachScript(udid) {
   validateRealUdid(udid);
   return `/usr/bin/python3 - ${quote(udid)} <<'PY'
-import json,pathlib,sys
-state=json.loads((pathlib.Path.home()/'.local/share/iphone-mirror-tools/current-session.json').read_text())
+import json,pathlib,sys,re,urllib.request
+unavailable='Watch agent mode needs a running iPhone session. Start the session from your agent, or turn off View > Watch agent (read-only) and reconnect to start it yourself.'
+try:
+ state=json.loads((pathlib.Path.home()/'.local/share/iphone-mirror-tools/current-session.json').read_text())
+except (OSError,ValueError): raise SystemExit(unavailable)
+if not isinstance(state,dict): raise SystemExit(unavailable)
 if state.get('udid')!=sys.argv[1]: raise SystemExit('The existing session belongs to another iPhone.')
+sid=state.get('sessionId','')
+if not isinstance(sid,str) or not re.fullmatch('[a-fA-F0-9-]{36}',sid): raise SystemExit(unavailable)
+try:
+ with urllib.request.urlopen('http://127.0.0.1:17425/session/'+sid+'/window/rect',timeout=5) as response: value=json.load(response).get('value')
+except (OSError,ValueError): raise SystemExit(unavailable)
+if not isinstance(value,dict) or value.get('error') or not value.get('width') or not value.get('height'): raise SystemExit(unavailable)
 print('MIRROR_JSON='+json.dumps(state))
 PY`;
 }

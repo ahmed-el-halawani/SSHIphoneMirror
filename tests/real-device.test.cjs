@@ -1,7 +1,34 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {validateRealUdid,validateInput,startScript,input}=require('../app/real-device.cjs');
+const {validateRealUdid,validateInput,startScript,input,attachScript}=require('../app/real-device.cjs');
 const session='12345678-1234-1234-1234-123456789abc';
+
+test('watch-agent attachment refuses stale or missing sessions without starting any processes',()=>{
+  const source=attachScript('00008140-0000000000000001').split("<<'PY'\n")[1].replace(/\nPY$/,'');
+  const code=`import pathlib,tempfile,json,sys,io,urllib.request
+from unittest.mock import patch
+sys.argv=['attach','phone']
+with tempfile.TemporaryDirectory() as folder:
+ home=pathlib.Path(folder);state_file=home/'.local/share/iphone-mirror-tools/current-session.json';state_file.parent.mkdir(parents=True)
+ for kind in ['missing','malformed','stopped','bad-id','invalid-session','healthy']:
+  state={'udid':'phone','sessionId':${JSON.stringify(session)}}
+  if kind=='bad-id':state['sessionId']='../status'
+  if kind!='missing':state_file.write_text(json.dumps(state))
+  if kind=='malformed':state_file.write_text('[]')
+  body={'value':{'width':440,'height':956}} if kind=='healthy' else {'value':{'error':'invalid session id'}}
+  with patch.object(pathlib.Path,'home',return_value=home),patch.object(urllib.request,'urlopen',return_value=io.StringIO(json.dumps(body))) as request:
+   if kind=='stopped':request.side_effect=OSError('Connection refused')
+   try:
+    exec(${JSON.stringify(source)})
+    assert kind=='healthy'
+   except SystemExit as error:
+    assert kind!='healthy' and 'Watch agent mode needs a running iPhone session' in str(error)
+   assert request.call_count==(0 if kind in ['missing','malformed','bad-id'] else 1)
+   if kind=='healthy':assert request.call_args.kwargs['timeout']==5
+`;
+  const result=require('node:child_process').spawnSync(process.platform==='win32'?'python':'python3',['-c',code],{encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr);
+});
 
 test('CoreDevice fallback launches signed WDA only after a definite Appium discovery failure',()=>{
   const source=startScript('00008140-0000000000000001');
